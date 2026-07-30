@@ -1,0 +1,305 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "KRAV-.#####",
+ "creation": "2026-07-14 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Other",
+ "engine": "InnoDB",
+ "field_order": [
+  "cu_invoice_number",
+  "invoice_source",
+  "purchase_invoice",
+  "supplier",
+  "status",
+  "pending_reason",
+  "claimable",
+  "column_break_1",
+  "supplier_name",
+  "supplier_pin",
+  "buyer_name",
+  "buyer_pin",
+  "section_break_etims_input",
+  "etims_supplier_pin_input",
+  "etims_branch_id",
+  "column_break_etims_input",
+  "etims_receipt_signature",
+  "etims_scanned_data",
+  "section_break_amounts",
+  "invoice_date",
+  "transmission_date",
+  "column_break_2",
+  "total_amount",
+  "taxable_amount",
+  "tax_amount",
+  "section_break_meta",
+  "invoice_category",
+  "invoice_type",
+  "section_break_retry",
+  "retry_count",
+  "last_retry",
+  "section_break_raw",
+  "etims_data_token",
+  "raw_response"
+ ],
+ "fields": [
+  {
+   "fieldname": "cu_invoice_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "CU Invoice Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "invoice_source",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Invoice Source",
+   "options": "TIMS\neTIMS"
+  },
+  {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nFetched\nFailed\nManual Review Needed"
+  },
+  {
+   "description": "Why this is still Pending: not yet transmitted to KRA vs. KRA's endpoint being unavailable. Blank once Fetched.",
+   "fieldname": "pending_reason",
+   "fieldtype": "Small Text",
+   "label": "Pending Reason",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "claimable",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Claimable"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name (from KRA)",
+   "read_only": 1
+  },
+  {
+   "description": "eTIMS only",
+   "fieldname": "supplier_pin",
+   "fieldtype": "Data",
+   "label": "Supplier PIN (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "buyer_name",
+   "fieldtype": "Data",
+   "label": "Buyer Name (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "buyer_pin",
+   "fieldtype": "Data",
+   "label": "Buyer PIN (from KRA)",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.invoice_source=='eTIMS'",
+   "description": "From the eTIMS receipt or its QR code - needed to build the lookup token (eTIMS has no direct CU-number lookup like TIMS).",
+   "fieldname": "section_break_etims_input",
+   "fieldtype": "Section Break",
+   "label": "eTIMS Receipt Details"
+  },
+  {
+   "fieldname": "etims_supplier_pin_input",
+   "fieldtype": "Data",
+   "label": "Supplier PIN (from receipt)"
+  },
+  {
+   "fieldname": "etims_branch_id",
+   "fieldtype": "Data",
+   "label": "Branch ID (from receipt)"
+  },
+  {
+   "fieldname": "column_break_etims_input",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "etims_receipt_signature",
+   "fieldtype": "Data",
+   "label": "Receipt Signature (dashes removed)"
+  },
+  {
+   "description": "Whatever was pasted from a QR scanner app - kept for audit, same reasoning as raw_response.",
+   "fieldname": "etims_scanned_data",
+   "fieldtype": "Small Text",
+   "label": "Scanned QR Text / URL"
+  },
+  {
+   "fieldname": "section_break_amounts",
+   "fieldtype": "Section Break",
+   "label": "Invoice Details (from KRA)"
+  },
+  {
+   "fieldname": "invoice_date",
+   "fieldtype": "Date",
+   "label": "Invoice Date (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transmission_date",
+   "fieldtype": "Datetime",
+   "label": "Transmission Date (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "taxable_amount",
+   "fieldtype": "Currency",
+   "label": "Taxable Amount (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "Tax Amount (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_meta",
+   "fieldtype": "Section Break",
+   "label": "Classification"
+  },
+  {
+   "fieldname": "invoice_category",
+   "fieldtype": "Data",
+   "label": "Invoice Category (from KRA)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_type",
+   "fieldtype": "Data",
+   "label": "Invoice Type (from KRA)",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_retry",
+   "fieldtype": "Section Break",
+   "label": "Retry Tracking"
+  },
+  {
+   "default": "0",
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "label": "Retry Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_retry",
+   "fieldtype": "Datetime",
+   "label": "Last Retry",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_raw",
+   "fieldtype": "Section Break",
+   "label": "Raw KRA Data"
+  },
+  {
+   "fieldname": "etims_data_token",
+   "fieldtype": "Data",
+   "label": "eTIMS Data Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "raw_response",
+   "fieldtype": "Code",
+   "label": "Raw Response",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 0,
+ "issingle": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-07-14 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Smart Receiving",
+ "name": "KRA Invoice Validation",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

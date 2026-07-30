@@ -1,0 +1,17 @@
+{
+	"doctype": "Page",
+	"name": "smart-receiving",
+	"page_name": "smart-receiving",
+	"module": "Smart Receiving",
+	"title": "Smart Receiving",
+	"standard": "Yes",
+	"system_page": 0,
+	"roles": [
+		{
+			"doctype": "Has Role",
+			"role": "System Manager",
+			"parentfield": "roles",
+			"parenttype": "Page"
+		}
+	]
+}

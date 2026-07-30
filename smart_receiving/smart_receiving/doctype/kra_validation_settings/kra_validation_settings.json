@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "creation": "2026-07-14 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Other",
+ "engine": "InnoDB",
+ "field_order": [
+  "company_pin",
+  "column_break_1",
+  "enable_nightly_retry",
+  "retry_age_out_days"
+ ],
+ "fields": [
+  {
+   "default": "P052216114Z",
+   "description": "BEVALI ONLINE's KRA PIN, used to determine whether a fetched invoice is claimable (buyer_pin matches this).",
+   "fieldname": "company_pin",
+   "fieldtype": "Data",
+   "label": "Company KRA PIN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_nightly_retry",
+   "fieldtype": "Check",
+   "label": "Enable Nightly Retry for Pending Validations"
+  },
+  {
+   "default": "30",
+   "depends_on": "enable_nightly_retry",
+   "description": "Stop retrying and flag for manual handling after this many days Pending.",
+   "fieldname": "retry_age_out_days",
+   "fieldtype": "Int",
+   "label": "Retry Age-Out (days)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "istable": 0,
+ "is_submittable": 0,
+ "links": [],
+ "modified": "2026-07-14 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Smart Receiving",
+ "name": "KRA Validation Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Purchase Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}
