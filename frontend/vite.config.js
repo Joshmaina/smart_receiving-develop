@@ -12,6 +12,8 @@ export default defineConfig({
 		rollupOptions: {
 			input: "src/main.js",
 			output: {
+				format: "iife",
+				name: "SmartReceivingBundle",
 				entryFileNames: "smart_receiving.js",
 				assetFileNames: "smart_receiving.[ext]",
 			},

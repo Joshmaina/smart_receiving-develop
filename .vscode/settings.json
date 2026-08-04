@@ -1,0 +1,11 @@
+{
+  "markdownlint.enable": false,
+  "python.analysis.extraPaths": [
+    "./apps/frappe",
+    "./apps/erpnext",
+    "./smart_receiving"
+  ],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  }
+}

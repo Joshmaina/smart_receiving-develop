@@ -180,6 +180,25 @@ def build_purchase_invoice(cart):
 	if isinstance(cart, str):
 		cart = frappe.parse_json(cart)
 
+	if cart.get("name") and (not cart.get("supplier") or not cart.get("items")):
+		existing_draft = get_receiving_draft(cart["name"])
+		if not cart.get("supplier"):
+			cart["supplier"] = existing_draft.get("supplier")
+		if not cart.get("items"):
+			cart["items"] = [
+				{
+					"item_code": d["item_code"],
+					"qty": d["qty"],
+					"rate": d["rate"],
+					"discount_percentage": d.get("discount_percentage", 0),
+					"item_tax_template": d.get("item_tax_template"),
+					"prices_by_list": {},
+				}
+				for d in existing_draft.get("items", [])
+			]
+		if not cart.get("warehouse"):
+			cart["warehouse"] = existing_draft.get("warehouse")
+
 	if not cart.get("supplier"):
 		frappe.throw("Cart must include a supplier")
 	if not cart.get("items"):

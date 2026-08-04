@@ -1,11 +1,4 @@
-// Ensure wrapper object exists regardless of hyphenation vs underscore
-if (!frappe.pages['smart-receiving'] && !frappe.pages['smart_receiving']) {
-    frappe.pages['smart-receiving'] = {};
-}
-
-const page_key = frappe.pages['smart-receiving'] ? 'smart-receiving' : 'smart_receiving';
-
-frappe.pages[page_key].on_page_load = function (wrapper) {
+function init_smart_receiving_page(wrapper) {
     const page = frappe.ui.make_app_page({
         parent: wrapper,
         title: "Smart Receiving",
@@ -25,21 +18,35 @@ frappe.pages[page_key].on_page_load = function (wrapper) {
     function boot() {
         if (window.smart_receiving_mount) {
             wrapper.smart_receiving_app = window.smart_receiving_mount(page.body.get(0));
+        } else {
+            // eslint-disable-next-line no-console
+            console.error("Smart Receiving: window.smart_receiving_mount is not defined.");
         }
     }
 
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "/assets/smart_receiving/dist/js/smart_receiving.js?v=" + v;
-    script.onload = boot;
-    document.head.appendChild(script);
-};
+    if (window.smart_receiving_mount) {
+        boot();
+    } else {
+        const script = document.createElement("script");
+        script.src = "/assets/smart_receiving/dist/js/smart_receiving.js?v=" + v;
+        script.onload = boot;
+        document.head.appendChild(script);
+    }
+}
 
-frappe.pages[page_key].on_page_unload = function (wrapper) {
+function unload_smart_receiving_page(wrapper) {
     if (wrapper.smart_receiving_app) {
         if (window.smart_receiving_unmount) {
             window.smart_receiving_unmount();
         }
         wrapper.smart_receiving_app = null;
     }
-};
+}
+
+frappe.pages['smart_receiving'] = frappe.pages['smart_receiving'] || {};
+frappe.pages['smart-receiving'] = frappe.pages['smart-receiving'] || {};
+
+frappe.pages['smart_receiving'].on_page_load = init_smart_receiving_page;
+frappe.pages['smart-receiving'].on_page_load = init_smart_receiving_page;
+frappe.pages['smart_receiving'].on_page_unload = unload_smart_receiving_page;
+frappe.pages['smart-receiving'].on_page_unload = unload_smart_receiving_page;
