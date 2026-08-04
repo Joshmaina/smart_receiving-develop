@@ -3,10 +3,12 @@
 		<div class="search-box">
 			<span class="search-icon">&#128269;</span>
 			<input
+				ref="searchInputRef"
 				type="text"
 				v-model="searchTerm"
 				placeholder="Search item by code, name, or scan barcode..."
 				@input="onSearchInput"
+				@keydown.enter.prevent="onSearchEnter"
 			/>
 			<ul v-if="searchResults.length" class="search-results">
 				<li v-for="r in searchResults" :key="r.item_code" @click="addItem(r.item_code)">
@@ -21,7 +23,8 @@
 				<tr>
 					<th></th>
 					<th>Item</th>
-					<th>Qty</th>
+					<th>PO Qty</th>
+					<th>Recv Qty</th>
 					<th>Cost (Excl. VAT)</th>
 					<th>VAT</th>
 					<th>Cost (Incl. VAT)</th>
@@ -32,7 +35,7 @@
 			</thead>
 			<tbody>
 				<template v-for="(row, idx) in items" :key="row.item_code">
-					<tr class="item-row">
+					<tr :class="['item-row', { 'row-over-po': row.po_qty > 0 && row.qty > row.po_qty }]">
 						<td class="expand-cell">
 							<button type="button" class="icon-btn" @click="row.expanded = !row.expanded">
 								{{ row.expanded ? "▼" : "▶" }}
@@ -42,6 +45,7 @@
 							<div class="item-name">{{ row.item_code }} - {{ row.item_name }}</div>
 							<div class="muted">Stock: {{ row.current_stock }} {{ row.stock_uom }}</div>
 						</td>
+						<td class="po-qty-cell">{{ row.po_qty || '-' }}</td>
 						<td><input type="number" min="0" step="any" v-model.number="row.qty" class="num" /></td>
 						<td>
 							<MoneyInput :value="round2(row.rate_excl)" @input="onExclInput(row, $event.target.value)" />
@@ -52,6 +56,9 @@
 									{{ t.name }} ({{ t.rate }}%)
 								</option>
 							</select>
+							<span :class="['tax-badge', taxBadgeClass(row.vat_template)]">
+								{{ taxBadgeLabel(row.vat_template) }}
+							</span>
 							<div class="vat-amount muted">{{ money(vatAmount(row)) }}</div>
 						</td>
 						<td>
@@ -65,7 +72,7 @@
 					</tr>
 					<tr v-if="row.expanded" class="price-panel-row">
 						<td></td>
-						<td colspan="8">
+						<td colspan="9">
 							<div class="price-panel">
 								<div class="price-panel-title">Selling prices</div>
 								<div class="price-panel-grid">
@@ -88,18 +95,18 @@
 			</tbody>
 			<tfoot>
 				<tr>
-					<td colspan="7" class="totals-label">Totals</td>
+					<td colspan="8" class="totals-label">Totals</td>
 					<td class="totals-value">{{ money(grandTotal) }}</td>
 					<td></td>
 				</tr>
 			</tfoot>
 		</table>
-		<p v-else class="empty">No items added yet. Search above to add one.</p>
+		<p v-else class="empty">No items added yet. Search or scan barcode above to add one.</p>
 	</div>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { call } from "../api";
 import { buildCartRow } from "../cartRow";
 import { flt, round2, money } from "../format";
@@ -113,9 +120,20 @@ const props = defineProps({
 });
 const emit = defineEmits(["add", "remove"]);
 
+const searchInputRef = ref(null);
 const searchTerm = ref("");
 const searchResults = ref([]);
 let searchDebounce = null;
+
+onMounted(() => {
+	searchInputRef.value?.focus();
+});
+
+function focusSearch() {
+	nextTick(() => {
+		searchInputRef.value?.focus();
+	});
+}
 
 function onSearchInput() {
 	clearTimeout(searchDebounce);
@@ -129,17 +147,52 @@ function onSearchInput() {
 			term,
 			warehouse: props.warehouse,
 		});
-	}, 300);
+	}, 200);
+}
+
+async function onSearchEnter() {
+	if (searchResults.value.length > 0) {
+		await addItem(searchResults.value[0].item_code);
+	} else if (searchTerm.value.trim()) {
+		const results = await call("smart_receiving.smart_receiving.api.receiving.search_items", {
+			term: searchTerm.value.trim(),
+			warehouse: props.warehouse,
+		});
+		if (results.length > 0) {
+			await addItem(results[0].item_code);
+		}
+	}
 }
 
 async function addItem(item_code) {
-	const context = await call("smart_receiving.smart_receiving.api.receiving.get_item_receiving_context", {
-		item_code,
-		warehouse: props.warehouse,
-	});
-	emit("add", buildCartRow(context));
+	const existing = props.items.find((i) => i.item_code === item_code);
+	if (existing) {
+		existing.qty = (flt(existing.qty) || 0) + 1;
+	} else {
+		const context = await call("smart_receiving.smart_receiving.api.receiving.get_item_receiving_context", {
+			item_code,
+			warehouse: props.warehouse,
+		});
+		emit("add", buildCartRow(context));
+	}
 	searchTerm.value = "";
 	searchResults.value = [];
+	focusSearch();
+}
+
+function taxBadgeLabel(templateName) {
+	if (!templateName) return "V - BO";
+	if (templateName.startsWith("V")) return "V - 16%";
+	if (templateName.startsWith("E")) return "E - Exempt";
+	if (templateName.startsWith("Z")) return "Z - 0%";
+	return templateName;
+}
+
+function taxBadgeClass(templateName) {
+	if (!templateName || templateName.startsWith("V")) return "badge-vat";
+	if (templateName.startsWith("E")) return "badge-exempt";
+	if (templateName.startsWith("Z")) return "badge-zero";
+	return "badge-vat";
 }
 
 function rateIncl(row) {
@@ -189,6 +242,8 @@ const grandTotal = computed(() => rowMath.grandTotal(props.vatTemplates, props.i
 	border: 1px solid var(--dark-border-color, #d1d8dd);
 	border-radius: 8px;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	background: var(--card-bg, #ffffff);
+	color: var(--text-color, #1f2937);
 }
 .search-box input:focus {
 	outline: none;
@@ -198,7 +253,8 @@ const grandTotal = computed(() => rowMath.grandTotal(props.vatTemplates, props.i
 .search-results {
 	position: absolute;
 	z-index: 10;
-	background: var(--card-bg, #fff);
+	background: var(--card-bg, #ffffff);
+	color: var(--text-color, #1f2937);
 	border: 1px solid var(--dark-border-color, #d1d8dd);
 	border-radius: 8px;
 	list-style: none;
@@ -226,6 +282,8 @@ const grandTotal = computed(() => rowMath.grandTotal(props.vatTemplates, props.i
 	border: 1px solid var(--dark-border-color, #d1d8dd);
 	border-radius: 8px;
 	overflow: hidden;
+	background: var(--card-bg, #ffffff);
+	color: var(--text-color, #1f2937);
 }
 .grid-table th {
 	background: var(--gray-100, #f4f5f6);
@@ -244,6 +302,14 @@ const grandTotal = computed(() => rowMath.grandTotal(props.vatTemplates, props.i
 .item-row:hover {
 	background: var(--gray-50, #fafbfc);
 }
+.row-over-po {
+	background: #fef2f2 !important;
+	border-left: 4px solid #ef4444 !important;
+}
+.po-qty-cell {
+	text-align: center;
+	font-weight: 500;
+}
 .item-name {
 	font-weight: 500;
 }
@@ -257,6 +323,8 @@ input.num {
 	border: 1px solid var(--dark-border-color, #d1d8dd);
 	border-radius: 4px;
 	text-align: right;
+	background: var(--card-bg, #ffffff);
+	color: var(--text-color, #1f2937);
 }
 .vat-cell select {
 	width: 100%;
@@ -264,10 +332,33 @@ input.num {
 	padding: 5px 6px;
 	border: 1px solid var(--dark-border-color, #d1d8dd);
 	border-radius: 4px;
+	background: var(--card-bg, #ffffff);
+	color: var(--text-color, #1f2937);
 }
 .vat-amount {
 	margin-top: 4px;
 	text-align: right;
+}
+.tax-badge {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 4px;
+	margin-top: 4px;
+	text-transform: uppercase;
+}
+.badge-vat {
+	background: #e0e7ff;
+	color: #3730a3;
+}
+.badge-exempt {
+	background: #fef3c7;
+	color: #92400e;
+}
+.badge-zero {
+	background: #d1fae5;
+	color: #065f46;
 }
 .line-total {
 	font-weight: 600;
@@ -280,6 +371,7 @@ input.num {
 	font-size: 14px;
 	padding: 4px 8px;
 	border-radius: 4px;
+	color: var(--text-color, #1f2937);
 }
 .icon-btn:hover {
 	background: var(--gray-100, #f4f5f6);

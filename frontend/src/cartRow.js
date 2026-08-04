@@ -11,6 +11,7 @@ export function buildCartRow(context, overrides = {}) {
 		item_name: context.item_name,
 		stock_uom: context.stock_uom,
 		current_stock: context.current_stock,
+		po_qty: overrides.po_qty ?? context.po_qty ?? 0,
 		qty: overrides.qty ?? 1,
 		rate_excl: overrides.rate_excl ?? context.last_purchase_rate ?? 0,
 		vat_template: overrides.vat_template ?? context.item_tax_template,
