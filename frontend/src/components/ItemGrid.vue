@@ -45,8 +45,20 @@
 							<div class="item-name">{{ row.item_code }} - {{ row.item_name }}</div>
 							<div class="muted">Stock: {{ row.current_stock }} {{ row.stock_uom }}</div>
 						</td>
-						<td class="po-qty-cell">{{ row.po_qty || '-' }}</td>
-						<td><input type="number" min="0" step="any" v-model.number="row.qty" class="num" /></td>
+						<td>
+							<div class="qty-uom-wrap">
+								<input type="number" min="0" step="any" v-model.number="row.qty" class="num" />
+								<select v-if="row.is_multi_uom" v-model="row.uom" @change="onUomChange(row)" class="uom-select">
+									<option v-for="u in row.available_uoms" :key="u.uom" :value="u.uom">
+										{{ u.uom }}
+									</option>
+								</select>
+								<span v-else class="uom-label">{{ row.uom || row.stock_uom }}</span>
+							</div>
+							<div v-if="row.uom && row.uom !== row.stock_uom" class="uom-hint muted">
+								{{ round2(row.qty * row.conversion_factor) }} {{ row.stock_uom }}
+							</div>
+						</td>
 						<td>
 							<MoneyInput :value="round2(row.rate_excl)" @input="onExclInput(row, $event.target.value)" />
 						</td>
@@ -133,6 +145,13 @@ function focusSearch() {
 	nextTick(() => {
 		searchInputRef.value?.focus();
 	});
+}
+
+function onUomChange(row) {
+	const found = (row.available_uoms || []).find((u) => u.uom === row.uom);
+	if (found) {
+		row.conversion_factor = flt(found.conversion_factor || 1.0);
+	}
 }
 
 function onSearchInput() {

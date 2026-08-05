@@ -31,3 +31,79 @@
 	color: #065f46 !important;
 	border: 1px solid #a7f3d0 !important;
 }
+
+.smart-receiving-app .qty-uom-wrap {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.smart-receiving-app .uom-select {
+	padding: 4px 6px;
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 4px;
+	background: var(--card-bg, #ffffff);
+	font-size: 12px;
+}
+
+.smart-receiving-app .uom-label {
+	font-size: 12px;
+	color: var(--text-muted, #6b7280);
+	font-weight: 600;
+}
+
+.smart-receiving-app .uom-hint {
+	font-size: 11px;
+	margin-top: 2px;
+	color: #4b5563;
+}
+
+.smart-receiving-app .financial-breakdown-panel {
+	margin: 16px 0;
+	padding: 14px 16px;
+	border: 1px dashed var(--dark-border-color, #d1d8dd);
+	border-radius: 8px;
+	background: var(--card-bg, #ffffff);
+	font-size: 13px;
+}
+
+.smart-receiving-app .breakdown-title {
+	font-weight: 700;
+	font-size: 12px;
+	text-transform: uppercase;
+	color: var(--text-muted, #6b7280);
+	margin-bottom: 8px;
+}
+
+.smart-receiving-app .breakdown-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 4px 0;
+	color: var(--text-color, #374151);
+}
+
+.smart-receiving-app .breakdown-row.discount {
+	color: #d97706;
+}
+
+.smart-receiving-app .breakdown-row.expense {
+	color: #2563eb;
+}
+
+.smart-receiving-app .breakdown-row.grand-total-row {
+	border-top: 1px solid var(--dark-border-color, #e5e7eb);
+	margin-top: 6px;
+	padding-top: 8px;
+	font-weight: 700;
+	font-size: 14px;
+}
+
+.smart-receiving-app .reconciliation-warning {
+	margin-top: 8px;
+	padding: 8px 12px;
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: 6px;
+	color: #991b1b;
+	font-weight: 600;
+}

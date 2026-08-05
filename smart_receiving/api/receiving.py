@@ -93,8 +93,36 @@ def get_item_receiving_context(item_code, warehouse=None):
 	"""
 	item = frappe.get_doc("Item", item_code)
 
+	# Build structured UOM array from Item.uoms child table
+	uoms = []
+	uom_set = set()
+	if item.uoms:
+		for uom_row in item.uoms:
+			if uom_row.uom and uom_row.uom not in uom_set:
+				uoms.append({
+					"uom": uom_row.uom,
+					"conversion_factor": flt(uom_row.conversion_factor or 1.0)
+				})
+				uom_set.add(uom_row.uom)
+
+	if item.stock_uom and item.stock_uom not in uom_set:
+		uoms.insert(0, {"uom": item.stock_uom, "conversion_factor": 1.0})
+		uom_set.add(item.stock_uom)
+
+	default_purchase_uom = item.purchase_uom if item.purchase_uom else item.stock_uom
+	is_multi_uom = len(uoms) > 1
+
 	last_purchase = get_last_purchase_details(item_code)
-	last_purchase_rate = flt(last_purchase.get("base_net_rate") or last_purchase.get("base_rate") or 0)
+	last_purchase_uom = last_purchase.get("uom") or last_purchase.get("stock_uom") or None
+	last_purchase_rate_raw = flt(last_purchase.get("base_net_rate") or last_purchase.get("base_rate") or last_purchase.get("rate") or 0)
+
+	# Rate Prefill Semantics: Prefill rate ONLY when selected/default UOM matches last purchase UOM
+	if last_purchase_uom and last_purchase_uom == default_purchase_uom:
+		last_purchase_rate = last_purchase_rate_raw
+	elif not last_purchase_uom:
+		last_purchase_rate = last_purchase_rate_raw
+	else:
+		last_purchase_rate = 0.0
 
 	current_stock = _get_stock_by_code([item_code], warehouse).get(item_code, 0.0)
 
@@ -141,6 +169,9 @@ def get_item_receiving_context(item_code, warehouse=None):
 		"stock_uom": item.stock_uom,
 		"current_stock": current_stock,
 		"last_purchase_rate": last_purchase_rate,
+		"uoms": uoms,
+		"is_multi_uom": is_multi_uom,
+		"default_purchase_uom": default_purchase_uom,
 		"item_tax_template": item_tax_template,
 		"item_tax_rate": item_tax_rate,
 		"selling_prices": selling_prices,
@@ -235,12 +266,16 @@ def build_purchase_invoice(cart):
 		pi.posting_date = cart["posting_date"]
 
 	for row in cart["items"]:
+		item_uom = row.get("uom") or frappe.db.get_value("Item", row["item_code"], "purchase_uom") or frappe.db.get_value("Item", row["item_code"], "stock_uom")
+		item_cf = flt(row.get("conversion_factor") or 1.0)
 		pi.append(
 			"items",
 			{
 				"item_code": row["item_code"],
 				"qty": flt(row["qty"]),
 				"rate": flt(row["rate"]),
+				"uom": item_uom,
+				"conversion_factor": item_cf,
 				"discount_percentage": flt(row.get("discount_percentage") or 0),
 				"item_tax_template": row.get("item_tax_template"),
 				"warehouse": warehouse,
@@ -292,6 +327,15 @@ def build_purchase_invoice(cart):
 		)
 
 	pi.calculate_taxes_and_totals()
+
+	# COMPARTMENT C: Financial Reconciliation & Grand Total Assertion
+	expected_grand_total = flt(pi.net_total + pi.total_taxes_and_charges, 2)
+	if abs(expected_grand_total - flt(pi.grand_total)) > 0.05:
+		frappe.throw(
+			f"Financial reconciliation assertion failed: server grand total ({pi.grand_total:.2f}) "
+			f"differs from expected calculation ({expected_grand_total:.2f})."
+		)
+
 	pi.save()
 
 	# Written on every save (draft or submit), not deferred to submit-only:
@@ -562,6 +606,8 @@ def get_receiving_draft(name):
 			"item_code": row.item_code,
 			"qty": row.qty,
 			"rate": row.rate,
+			"uom": row.uom,
+			"conversion_factor": row.conversion_factor,
 			"discount_percentage": row.discount_percentage,
 			"item_tax_template": row.item_tax_template,
 		}

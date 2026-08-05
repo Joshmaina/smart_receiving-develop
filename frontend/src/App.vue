@@ -45,6 +45,33 @@
 			<strong>{{ money(finalGrandTotal) }}</strong>
 		</div>
 
+		<div class="financial-breakdown-panel">
+			<div class="breakdown-title">Financial Breakdown Audit</div>
+			<div class="breakdown-row">
+				<span>Items Net Subtotal:</span>
+				<strong>{{ money(calcNetTotal()) }}</strong>
+			</div>
+			<div v-if="calcDiscountAmount() > 0" class="breakdown-row discount">
+				<span>Discount Amount Deducted ({{ bill.discount_percentage }}%):</span>
+				<strong>-{{ money(calcDiscountAmount()) }}</strong>
+			</div>
+			<div class="breakdown-row">
+				<span>VAT Total (16% / Exempt / 0%):</span>
+				<strong>{{ money(calcVatTotal()) }}</strong>
+			</div>
+			<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="breakdown-row expense">
+				<span>Expense: {{ exp.description || exp.expense_account }}</span>
+				<strong>+{{ money(flt(exp.amount)) }}</strong>
+			</div>
+			<div class="breakdown-row grand-total-row">
+				<span>Calculated Grand Total:</span>
+				<strong>{{ money(finalGrandTotal) }}</strong>
+			</div>
+			<div v-if="reconciliationWarning" class="reconciliation-warning">
+				⚠️ {{ reconciliationWarning }}
+			</div>
+		</div>
+
 		<div v-if="currentDraftName" class="attach-block">
 			<div class="bill-block-title">Supplier Invoice Document</div>
 			<ul v-if="attachedFiles.length" class="attached-files">
@@ -203,7 +230,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { call } from "./api";
 import { buildCartRow } from "./cartRow";
 import { flt, money, generateRequestId } from "./format";
-import { grandTotal as computeGrandTotal, billGrandTotal } from "./rowMath";
+import { grandTotal as computeGrandTotal, billGrandTotal, itemsNetTotal, itemsVatTotal } from "./rowMath";
 import ReceivingHeader from "./components/ReceivingHeader.vue";
 import ItemGrid from "./components/ItemGrid.vue";
 import MoneyInput from "./components/MoneyInput.vue";
@@ -285,6 +312,21 @@ const submitError = ref(null);
 
 const drafts = ref([]);
 const loadingDrafts = ref(true);
+const reconciliationWarning = ref(null);
+
+function calcNetTotal() {
+	return itemsNetTotal(cartItems.value);
+}
+
+function calcDiscountAmount() {
+	const factor = flt(bill.discount_percentage) / 100;
+	return calcNetTotal() * factor;
+}
+
+function calcVatTotal() {
+	const discountFactor = 1 - flt(bill.discount_percentage) / 100;
+	return itemsVatTotal(vatTemplates.value, cartItems.value) * discountFactor;
+}
 
 const finalGrandTotal = computed(() =>
 	billGrandTotal(vatTemplates.value, cartItems.value, bill.discount_percentage, bill.additional_expenses),
@@ -461,6 +503,8 @@ async function loadDraft(name) {
 			buildCartRow(context, {
 				qty: item.qty,
 				rate_excl: item.rate,
+				uom: item.uom,
+				conversion_factor: item.conversion_factor,
 				discount_percentage: item.discount_percentage,
 				vat_template: item.item_tax_template,
 			}),
@@ -480,6 +524,8 @@ function buildCart() {
 			item_code: row.item_code,
 			qty: row.qty,
 			rate: row.rate_excl,
+			uom: row.uom,
+			conversion_factor: row.conversion_factor,
 			discount_percentage: row.discount_percentage,
 			item_tax_template: row.vat_template,
 			prices_by_list: row.prices,
@@ -495,12 +541,21 @@ function buildCart() {
 async function saveDraft() {
 	saving.value = true;
 	saveError.value = null;
+	reconciliationWarning.value = null;
 	try {
 		const result = await call("smart_receiving.smart_receiving.api.receiving.build_purchase_invoice", {
 			cart: buildCart(),
 		});
-		resetForm();
+		currentDraftName.value = result.name;
 		savedResult.value = result;
+
+		const clientTotal = flt(finalGrandTotal.value);
+		const serverTotal = flt(result.grand_total);
+		if (Math.abs(clientTotal - serverTotal) > 0.01) {
+			reconciliationWarning.value = `Grand Total variance detected: UI calculated ${clientTotal.toFixed(2)} KES, but server returned ${serverTotal.toFixed(2)} KES.`;
+		}
+
+		await loadAttachedFiles(result.name);
 		await loadDrafts();
 	} catch (e) {
 		saveError.value = e.message || "Failed to save draft";
@@ -518,22 +573,22 @@ function confirmAndSubmit() {
 async function submitReceiving() {
 	submitting.value = true;
 	submitError.value = null;
+	reconciliationWarning.value = null;
 	try {
-		const paymentPayload = payment.enabled
-			? {
-					mode_of_payment: payment.mode_of_payment,
-					amount: payment.amount,
-					reference_no: payment.reference_no,
-					reference_date: payment.reference_date,
-				}
-			: null;
 		const result = await call("smart_receiving.smart_receiving.api.receiving.submit_receiving", {
 			cart: buildCart(),
-			payment: paymentPayload,
+			payment: payment.enabled ? payment : null,
 			client_request_id: clientRequestId.value,
 		});
-		resetForm();
+
+		const clientTotal = flt(finalGrandTotal.value);
+		const serverTotal = flt(result.grand_total);
+		if (Math.abs(clientTotal - serverTotal) > 0.01) {
+			reconciliationWarning.value = `Grand Total variance detected: UI calculated ${clientTotal.toFixed(2)} KES, but server returned ${serverTotal.toFixed(2)} KES.`;
+		}
+
 		submittedResult.value = result;
+		resetForm();
 		await loadDrafts();
 	} catch (e) {
 		submitError.value = e.message || "Failed to submit receiving";
