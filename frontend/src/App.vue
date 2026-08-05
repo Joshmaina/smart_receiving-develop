@@ -1,5 +1,5 @@
 <template>
-	<div class="smart-receiving-app">
+	<form id="smart-receiving-form" name="smart_receiving_form" class="smart-receiving-app" @submit.prevent>
 		<ReceivingHeader v-model="header" />
 
 		<div v-if="currentDraftName" class="editing-banner">
@@ -18,20 +18,21 @@
 		<div class="bill-block">
 			<div class="bill-block-title">Bill</div>
 			<div class="bill-row">
-				<div class="field">
-					<label for="additional-discount-input">Additional Discount %</label>
-					<input id="additional-discount-input" name="additional_discount" type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" aria-label="Additional Discount Percentage" />
-				</div>
+				<label for="additional-discount-input" class="field">
+					<span class="label-text">Additional Discount %</span>
+					<input id="additional-discount-input" name="additional_discount" type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" autocomplete="off" aria-label="Additional Discount Percentage" />
+				</label>
 			</div>
 
 			<div class="expenses">
 				<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="expense-row">
-					<select :id="'expense-account-' + idx" :name="'expense_account_' + idx" v-model="exp.expense_account" :aria-label="'Expense account ' + (idx + 1)">
+					<label :for="'expense-account-' + idx" class="sr-only">Expense account {{ idx + 1 }}</label>
+					<select :id="'expense-account-' + idx" :name="'expense_account_' + idx" v-model="exp.expense_account" autocomplete="off" :aria-label="'Expense account ' + (idx + 1)">
 						<option value="" disabled>Choose expense account</option>
 						<option v-for="a in expenseAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
 					</select>
 					<MoneyInput :id="'expense-amount-' + idx" :name="'expense_amount_' + idx" :aria-label="'Expense amount ' + (idx + 1)" :value="exp.amount" @input="exp.amount = flt($event.target.value)" />
-					<input :id="'expense-desc-' + idx" :name="'expense_desc_' + idx" type="text" v-model="exp.description" placeholder="Description (optional)" :aria-label="'Expense description ' + (idx + 1)" />
+					<input :id="'expense-desc-' + idx" :name="'expense_desc_' + idx" type="text" v-model="exp.description" placeholder="Description (optional)" autocomplete="off" :aria-label="'Expense description ' + (idx + 1)" />
 					<button type="button" class="icon-btn danger" @click="bill.additional_expenses.splice(idx, 1)">
 						&times;
 					</button>
@@ -79,7 +80,8 @@
 					<a :href="f.file_url" target="_blank">{{ f.file_name }}</a>
 				</li>
 			</ul>
-			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" aria-label="Attach supplier invoice document" />
+			<label for="supplier-file-attachment" class="sr-only">Attach supplier invoice document</label>
+			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" autocomplete="off" aria-label="Attach supplier invoice document" />
 			<span v-if="attaching" class="muted">Uploading...</span>
 			<span v-if="attachError" class="error">{{ attachError }}</span>
 		</div>
@@ -88,17 +90,18 @@
 		<div v-if="currentDraftName" class="kra-block">
 			<div class="bill-block-title">KRA Validation</div>
 			<div class="bill-row">
-				<div class="field kra-cu-field">
-					<label for="kra-cu-invoice-number">CU Invoice Number</label>
+				<label for="kra-cu-invoice-number" class="field kra-cu-field">
+					<span class="label-text">CU Invoice Number</span>
 					<input
 						id="kra-cu-invoice-number"
 						name="kra_cu_invoice_number"
 						type="text"
 						v-model="kra.cu_invoice_number"
 						placeholder="19-digit TIMS number or KRACU... eTIMS number"
+						autocomplete="off"
 						aria-label="KRA Control Unit Invoice Number"
 					/>
-				</div>
+				</label>
 				<button
 					type="button"
 					class="secondary"
@@ -109,33 +112,34 @@
 				</button>
 			</div>
 			<div v-if="isEtimsNumber" class="bill-row">
-				<div class="field kra-scan-field">
-					<label for="kra-etims-scanned-data">Scanned QR text / URL</label>
+				<label for="kra-etims-scanned-data" class="field kra-scan-field">
+					<span class="label-text">Scanned QR text / URL</span>
 					<input
 						id="kra-etims-scanned-data"
 						name="kra_etims_scanned_data"
 						type="text"
 						v-model="kra.etims_scanned_data"
 						placeholder="Tap 'Scan QR' below, or paste from any QR scanner app"
+						autocomplete="off"
 						aria-label="Scanned QR text or URL"
 					/>
-				</div>
+				</label>
 				<button type="button" class="secondary" @click="showQrScanner = true">Scan QR</button>
 			</div>
 			<QrScanner v-if="showQrScanner" @scanned="onQrScanned" @close="showQrScanner = false" />
 			<div v-if="isEtimsNumber && !kra.etims_scanned_data" class="bill-row">
-				<div class="field">
-					<label for="kra-etims-supplier-pin">Supplier PIN (from receipt)</label>
-					<input id="kra-etims-supplier-pin" name="kra_etims_supplier_pin" type="text" v-model="kra.etims_supplier_pin" aria-label="Supplier KRA PIN" />
-				</div>
-				<div class="field">
-					<label for="kra-etims-branch-id">Branch ID (from receipt)</label>
-					<input id="kra-etims-branch-id" name="kra_etims_branch_id" type="text" v-model="kra.etims_branch_id" aria-label="Supplier Branch ID" />
-				</div>
-				<div class="field">
-					<label for="kra-etims-receipt-signature">Receipt Signature</label>
-					<input id="kra-etims-receipt-signature" name="kra_etims_receipt_signature" type="text" v-model="kra.etims_receipt_signature" placeholder="dashes optional" aria-label="Receipt Signature" />
-				</div>
+				<label for="kra-etims-supplier-pin" class="field">
+					<span class="label-text">Supplier PIN (from receipt)</span>
+					<input id="kra-etims-supplier-pin" name="kra_etims_supplier_pin" type="text" v-model="kra.etims_supplier_pin" autocomplete="off" aria-label="Supplier KRA PIN" />
+				</label>
+				<label for="kra-etims-branch-id" class="field">
+					<span class="label-text">Branch ID (from receipt)</span>
+					<input id="kra-etims-branch-id" name="kra_etims_branch_id" type="text" v-model="kra.etims_branch_id" autocomplete="off" aria-label="Supplier Branch ID" />
+				</label>
+				<label for="kra-etims-receipt-signature" class="field">
+					<span class="label-text">Receipt Signature</span>
+					<input id="kra-etims-receipt-signature" name="kra_etims_receipt_signature" type="text" v-model="kra.etims_receipt_signature" placeholder="dashes optional" autocomplete="off" aria-label="Receipt Signature" />
+				</label>
 			</div>
 			<p v-if="isEtimsNumber && kra.etims_scanned_data" class="muted">
 				Using the scanned QR text above - manual PIN/Branch/Signature fields are not needed.
@@ -157,25 +161,25 @@
 				Record payment now
 			</label>
 			<div v-if="payment.enabled" class="payment-fields">
-				<div class="field">
-					<label for="payment-mode-select">Mode of Payment *</label>
-					<select id="payment-mode-select" name="payment_mode" v-model="payment.mode_of_payment" aria-label="Mode of Payment">
+				<label for="payment-mode-select" class="field">
+					<span class="label-text">Mode of Payment *</span>
+					<select id="payment-mode-select" name="payment_mode" v-model="payment.mode_of_payment" autocomplete="off" aria-label="Mode of Payment">
 						<option value="" disabled>Choose mode</option>
 						<option v-for="m in modesOfPayment" :key="m.name" :value="m.name">{{ m.name }}</option>
 					</select>
-				</div>
-				<div class="field">
-					<label for="payment-amount-input">Amount *</label>
+				</label>
+				<label for="payment-amount-input" class="field">
+					<span class="label-text">Amount *</span>
 					<MoneyInput id="payment-amount-input" name="payment_amount" aria-label="Payment Amount" :value="payment.amount" @input="payment.amount = flt($event.target.value)" />
-				</div>
-				<div class="field">
-					<label for="payment-ref-no">Reference No *</label>
-					<input id="payment-ref-no" name="payment_reference_no" type="text" v-model="payment.reference_no" placeholder="Required" aria-label="Payment Reference Number" />
-				</div>
-				<div class="field">
-					<label for="payment-ref-date">Reference Date</label>
-					<input id="payment-ref-date" name="payment_reference_date" type="date" v-model="payment.reference_date" aria-label="Payment Reference Date" />
-				</div>
+				</label>
+				<label for="payment-ref-no" class="field">
+					<span class="label-text">Reference No *</span>
+					<input id="payment-ref-no" name="payment_reference_no" type="text" v-model="payment.reference_no" placeholder="Required" autocomplete="off" aria-label="Payment Reference Number" />
+				</label>
+				<label for="payment-ref-date" class="field">
+					<span class="label-text">Reference Date</span>
+					<input id="payment-ref-date" name="payment_reference_date" type="date" v-model="payment.reference_date" autocomplete="off" aria-label="Payment Reference Date" />
+				</label>
 			</div>
 		</div>
 
@@ -228,7 +232,7 @@
 				</tr>
 			</tbody>
 		</table>
-	</div>
+	</form>
 </template>
 
 <script setup>

@@ -9,6 +9,7 @@
 				type="text"
 				v-model="searchTerm"
 				placeholder="Search item by code, name, or scan barcode..."
+				autocomplete="off"
 				aria-label="Search item by code, name, or scan barcode"
 				@input="onSearchInput"
 				@keydown.enter.prevent="onSearchEnter"

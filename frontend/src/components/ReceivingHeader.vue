@@ -1,30 +1,30 @@
 <template>
 	<div class="receiving-header">
-		<div class="field">
-			<label for="company-input">Company</label>
-			<input id="company-input" name="company" type="text" value="BEVALI ONLINE" disabled aria-label="Company Name" />
-		</div>
-		<div class="field">
-			<label for="supplier-input">Supplier *</label>
-			<input id="supplier-input" name="supplier" list="supplier-options" v-model="header.supplier" placeholder="Choose supplier" aria-label="Supplier Name" />
+		<label for="company-input" class="field">
+			<span class="label-text">Company</span>
+			<input id="company-input" name="company" type="text" value="BEVALI ONLINE" disabled autocomplete="off" aria-label="Company Name" />
+		</label>
+		<label for="supplier-input" class="field">
+			<span class="label-text">Supplier *</span>
+			<input id="supplier-input" name="supplier" list="supplier-options" v-model="header.supplier" placeholder="Choose supplier" autocomplete="off" aria-label="Supplier Name" />
 			<datalist id="supplier-options">
 				<option v-for="s in suppliers" :key="s.name" :value="s.name" />
 			</datalist>
-		</div>
-		<div class="field">
-			<label for="reference-no-input">Reference No</label>
-			<input id="reference-no-input" name="reference_no" type="text" v-model="header.bill_no" placeholder="Supplier's invoice number" aria-label="Supplier Invoice Number" />
-		</div>
-		<div class="field">
-			<label for="posting-date-input">Date</label>
-			<input id="posting-date-input" name="posting_date" type="date" v-model="header.posting_date" aria-label="Invoice Posting Date" />
-		</div>
-		<div class="field">
-			<label for="warehouse-select">Warehouse</label>
-			<select id="warehouse-select" name="warehouse" v-model="header.warehouse" aria-label="Receiving Warehouse">
+		</label>
+		<label for="reference-no-input" class="field">
+			<span class="label-text">Reference No</span>
+			<input id="reference-no-input" name="reference_no" type="text" v-model="header.bill_no" placeholder="Supplier's invoice number" autocomplete="off" aria-label="Supplier Invoice Number" />
+		</label>
+		<label for="posting-date-input" class="field">
+			<span class="label-text">Date</span>
+			<input id="posting-date-input" name="posting_date" type="date" v-model="header.posting_date" autocomplete="off" aria-label="Invoice Posting Date" />
+		</label>
+		<label for="warehouse-select" class="field">
+			<span class="label-text">Warehouse</span>
+			<select id="warehouse-select" name="warehouse" v-model="header.warehouse" autocomplete="off" aria-label="Receiving Warehouse">
 				<option v-for="w in warehouses" :key="w.name" :value="w.name">{{ w.name }}</option>
 			</select>
-		</div>
+		</label>
 	</div>
 </template>
 
@@ -70,7 +70,7 @@ onMounted(async () => {
 	gap: 4px;
 	min-width: 170px;
 }
-.field label {
+.field .label-text {
 	font-size: 12px;
 	font-weight: 600;
 	color: var(--text-muted, #6b7280);

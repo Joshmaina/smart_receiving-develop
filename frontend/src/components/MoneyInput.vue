@@ -3,6 +3,7 @@
 		:id="id"
 		:name="name"
 		:aria-label="ariaLabel || name || 'Amount input'"
+		autocomplete="off"
 		type="text"
 		inputmode="decimal"
 		:value="displayValue"
