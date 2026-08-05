@@ -3,10 +3,13 @@
 		<div class="search-box">
 			<span class="search-icon">&#128269;</span>
 			<input
+				id="item-search-input"
+				name="item_search"
 				ref="searchInputRef"
 				type="text"
 				v-model="searchTerm"
 				placeholder="Search item by code, name, or scan barcode..."
+				aria-label="Search item by code, name, or scan barcode"
 				@input="onSearchInput"
 				@keydown.enter.prevent="onSearchEnter"
 			/>
@@ -57,6 +60,7 @@
 									v-model.number="row.qty"
 									class="num"
 									placeholder="0.00"
+									:aria-label="'Received Quantity for ' + row.item_code"
 								/>
 								<select
 									v-if="row.available_uoms && row.available_uoms.length > 1"
@@ -65,6 +69,7 @@
 									v-model="row.uom"
 									@change="handleUomChange(row)"
 									class="uom-select"
+									:aria-label="'Unit of Measure for ' + row.item_code"
 								>
 									<option v-for="u in row.available_uoms" :key="u.uom" :value="u.uom">
 										{{ u.label }}
@@ -77,10 +82,21 @@
 							</div>
 						</td>
 						<td>
-							<MoneyInput :value="round2(row.rate_excl)" @input="onExclInput(row, $event.target.value)" />
+							<MoneyInput
+								:id="'cost-excl-' + row.item_code"
+								:name="'cost_excl_' + row.item_code"
+								:aria-label="'Cost Excluding VAT for ' + row.item_code"
+								:value="round2(row.rate_excl)"
+								@input="onExclInput(row, $event.target.value)"
+							/>
 						</td>
 						<td class="vat-cell">
-							<select v-model="row.vat_template">
+							<select
+								:id="'vat-select-' + row.item_code"
+								:name="'vat_' + row.item_code"
+								v-model="row.vat_template"
+								:aria-label="'VAT Template for ' + row.item_code"
+							>
 								<option v-for="t in vatTemplates" :key="t.name" :value="t.name">
 									{{ t.name }} ({{ t.rate }}%)
 								</option>
@@ -91,10 +107,26 @@
 							<div class="vat-amount muted">{{ money(vatAmount(row)) }}</div>
 						</td>
 						<td>
-							<MoneyInput :value="round2(rateIncl(row))" @input="onInclInput(row, $event.target.value)" />
+							<MoneyInput
+								:id="'cost-incl-' + row.item_code"
+								:name="'cost_incl_' + row.item_code"
+								:aria-label="'Cost Including VAT for ' + row.item_code"
+								:value="round2(rateIncl(row))"
+								@input="onInclInput(row, $event.target.value)"
+							/>
 						</td>
 						<td>
-							<input type="number" min="0" max="100" step="any" v-model.number="row.discount_percentage" class="num" />
+							<input
+								:id="'discount-input-' + row.item_code"
+								:name="'discount_' + row.item_code"
+								type="number"
+								min="0"
+								max="100"
+								step="any"
+								v-model.number="row.discount_percentage"
+								class="num"
+								:aria-label="'Discount percentage for ' + row.item_code"
+							/>
 						</td>
 						<td class="line-total">{{ money(lineTotal(row)) }}</td>
 						<td><button type="button" class="icon-btn danger" @click="$emit('remove', idx)">&times;</button></td>
@@ -105,12 +137,15 @@
 							<div class="price-panel">
 								<div class="price-panel-title">Selling prices</div>
 								<div class="price-panel-grid">
-									<label v-for="(value, priceList) in row.prices" :key="priceList" class="price-field">
+									<label v-for="(value, priceList) in row.prices" :key="priceList" :for="'price-' + row.item_code + '-' + priceList.replace(/\s+/g, '-').toLowerCase()" class="price-field">
 										<span>
 											{{ priceList }}
 											<em v-if="priceList === row.primary_price_list">(primary)</em>
 										</span>
 										<MoneyInput
+											:id="'price-' + row.item_code + '-' + priceList.replace(/\s+/g, '-').toLowerCase()"
+											:name="'price_' + row.item_code + '_' + priceList.replace(/\s+/g, '_').toLowerCase()"
+											:aria-label="'Selling price for ' + priceList + ' for ' + row.item_code"
 											:value="round2(row.prices[priceList])"
 											@input="row.prices[priceList] = flt($event.target.value)"
 										/>

@@ -19,19 +19,19 @@
 			<div class="bill-block-title">Bill</div>
 			<div class="bill-row">
 				<div class="field">
-					<label>Additional Discount %</label>
-					<input type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" />
+					<label for="additional-discount-input">Additional Discount %</label>
+					<input id="additional-discount-input" name="additional_discount" type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" aria-label="Additional Discount Percentage" />
 				</div>
 			</div>
 
 			<div class="expenses">
 				<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="expense-row">
-					<select v-model="exp.expense_account">
+					<select :id="'expense-account-' + idx" :name="'expense_account_' + idx" v-model="exp.expense_account" :aria-label="'Expense account ' + (idx + 1)">
 						<option value="" disabled>Choose expense account</option>
 						<option v-for="a in expenseAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
 					</select>
-					<MoneyInput :value="exp.amount" @input="exp.amount = flt($event.target.value)" />
-					<input type="text" v-model="exp.description" placeholder="Description (optional)" />
+					<MoneyInput :id="'expense-amount-' + idx" :name="'expense_amount_' + idx" :aria-label="'Expense amount ' + (idx + 1)" :value="exp.amount" @input="exp.amount = flt($event.target.value)" />
+					<input :id="'expense-desc-' + idx" :name="'expense_desc_' + idx" type="text" v-model="exp.description" placeholder="Description (optional)" :aria-label="'Expense description ' + (idx + 1)" />
 					<button type="button" class="icon-btn danger" @click="bill.additional_expenses.splice(idx, 1)">
 						&times;
 					</button>
@@ -79,7 +79,7 @@
 					<a :href="f.file_url" target="_blank">{{ f.file_name }}</a>
 				</li>
 			</ul>
-			<input type="file" @change="onAttachFile" />
+			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" aria-label="Attach supplier invoice document" />
 			<span v-if="attaching" class="muted">Uploading...</span>
 			<span v-if="attachError" class="error">{{ attachError }}</span>
 		</div>
@@ -89,11 +89,14 @@
 			<div class="bill-block-title">KRA Validation</div>
 			<div class="bill-row">
 				<div class="field kra-cu-field">
-					<label>CU Invoice Number</label>
+					<label for="kra-cu-invoice-number">CU Invoice Number</label>
 					<input
+						id="kra-cu-invoice-number"
+						name="kra_cu_invoice_number"
 						type="text"
 						v-model="kra.cu_invoice_number"
 						placeholder="19-digit TIMS number or KRACU... eTIMS number"
+						aria-label="KRA Control Unit Invoice Number"
 					/>
 				</div>
 				<button
@@ -107,11 +110,14 @@
 			</div>
 			<div v-if="isEtimsNumber" class="bill-row">
 				<div class="field kra-scan-field">
-					<label>Scanned QR text / URL</label>
+					<label for="kra-etims-scanned-data">Scanned QR text / URL</label>
 					<input
+						id="kra-etims-scanned-data"
+						name="kra_etims_scanned_data"
 						type="text"
 						v-model="kra.etims_scanned_data"
 						placeholder="Tap 'Scan QR' below, or paste from any QR scanner app"
+						aria-label="Scanned QR text or URL"
 					/>
 				</div>
 				<button type="button" class="secondary" @click="showQrScanner = true">Scan QR</button>
@@ -119,16 +125,16 @@
 			<QrScanner v-if="showQrScanner" @scanned="onQrScanned" @close="showQrScanner = false" />
 			<div v-if="isEtimsNumber && !kra.etims_scanned_data" class="bill-row">
 				<div class="field">
-					<label>Supplier PIN (from receipt)</label>
-					<input type="text" v-model="kra.etims_supplier_pin" />
+					<label for="kra-etims-supplier-pin">Supplier PIN (from receipt)</label>
+					<input id="kra-etims-supplier-pin" name="kra_etims_supplier_pin" type="text" v-model="kra.etims_supplier_pin" aria-label="Supplier KRA PIN" />
 				</div>
 				<div class="field">
-					<label>Branch ID (from receipt)</label>
-					<input type="text" v-model="kra.etims_branch_id" />
+					<label for="kra-etims-branch-id">Branch ID (from receipt)</label>
+					<input id="kra-etims-branch-id" name="kra_etims_branch_id" type="text" v-model="kra.etims_branch_id" aria-label="Supplier Branch ID" />
 				</div>
 				<div class="field">
-					<label>Receipt Signature</label>
-					<input type="text" v-model="kra.etims_receipt_signature" placeholder="dashes optional" />
+					<label for="kra-etims-receipt-signature">Receipt Signature</label>
+					<input id="kra-etims-receipt-signature" name="kra_etims_receipt_signature" type="text" v-model="kra.etims_receipt_signature" placeholder="dashes optional" aria-label="Receipt Signature" />
 				</div>
 			</div>
 			<p v-if="isEtimsNumber && kra.etims_scanned_data" class="muted">
