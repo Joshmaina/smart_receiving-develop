@@ -16,6 +16,9 @@ function init_smart_receiving_page(wrapper) {
     document.head.appendChild(link);
 
     function boot() {
+        if (wrapper.smart_receiving_app && window.smart_receiving_unmount) {
+            window.smart_receiving_unmount();
+        }
         if (window.smart_receiving_mount) {
             wrapper.smart_receiving_app = window.smart_receiving_mount(page.body.get(0));
         } else {
@@ -24,14 +27,15 @@ function init_smart_receiving_page(wrapper) {
         }
     }
 
-    if (window.smart_receiving_mount) {
-        boot();
-    } else {
-        const script = document.createElement("script");
-        script.src = "/assets/smart_receiving/dist/js/smart_receiving.js?v=" + v;
-        script.onload = boot;
-        document.head.appendChild(script);
-    }
+    const existingScript = document.getElementById("smart-receiving-js");
+    if (existingScript) existingScript.remove();
+
+    const script = document.createElement("script");
+    script.id = "smart-receiving-js";
+    script.src = "/assets/smart_receiving/dist/js/smart_receiving.src?v=" + v;
+    script.src = "/assets/smart_receiving/dist/js/smart_receiving.js?v=" + v;
+    script.onload = boot;
+    document.head.appendChild(script);
 }
 
 function unload_smart_receiving_page(wrapper) {
