@@ -1,3 +1,5 @@
+import { flt } from "./format";
+
 // Builds a receiving cart line from a get_item_receiving_context response,
 // optionally overriding qty/rate/discount/tax/uom (used when resuming a draft,
 // where those values come from the saved PI rather than fresh defaults).
@@ -6,14 +8,28 @@ export function buildCartRow(context, overrides = {}) {
 	for (const p of context.selling_prices || []) {
 		prices[p.price_list] = p.price ?? 0;
 	}
-	const uoms = context.uoms || [{ uom: context.stock_uom, conversion_factor: 1.0 }];
-	const defaultUom = overrides.uom || context.default_purchase_uom || context.stock_uom;
-	const selectedUomObj = uoms.find((u) => u.uom === defaultUom) || uoms[0] || { uom: context.stock_uom, conversion_factor: 1.0 };
+
+	const stockUom = context.stock_uom || "Pcs";
+	const rawUoms = context.uoms && context.uoms.length > 0
+		? context.uoms
+		: [{ uom: stockUom, conversion_factor: 1.0 }];
+
+	const uoms = rawUoms.map((u) => {
+		const factor = flt(u.conversion_factor || 1.0);
+		return {
+			uom: u.uom,
+			conversion_factor: factor,
+			label: `${u.uom} (${factor} ${stockUom})`,
+		};
+	});
+
+	const defaultUom = overrides.uom || context.default_purchase_uom || stockUom;
+	const selectedUomObj = uoms.find((u) => u.uom === defaultUom) || uoms[0] || { uom: stockUom, conversion_factor: 1.0, label: `${stockUom} (1 ${stockUom})` };
 
 	return {
 		item_code: context.item_code,
 		item_name: context.item_name,
-		stock_uom: context.stock_uom,
+		stock_uom: stockUom,
 		current_stock: context.current_stock,
 		uom: selectedUomObj.uom,
 		conversion_factor: overrides.conversion_factor ?? selectedUomObj.conversion_factor ?? 1.0,
