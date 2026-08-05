@@ -45,6 +45,7 @@
 							<div class="item-name">{{ row.item_code }} - {{ row.item_name }}</div>
 							<div class="muted">Stock: {{ row.current_stock }} {{ row.stock_uom }}</div>
 						</td>
+						<td class="po-qty-cell">{{ row.po_qty ? row.po_qty : '-' }}</td>
 						<td>
 							<div class="qty-uom-wrap">
 								<input type="number" min="0" step="any" v-model.number="row.qty" class="num" />

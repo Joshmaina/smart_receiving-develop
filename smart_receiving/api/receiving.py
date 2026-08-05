@@ -96,14 +96,13 @@ def get_item_receiving_context(item_code, warehouse=None):
 	# Build structured UOM array from Item.uoms child table
 	uoms = []
 	uom_set = set()
-	if item.uoms:
-		for uom_row in item.uoms:
-			if uom_row.uom and uom_row.uom not in uom_set:
-				uoms.append({
-					"uom": uom_row.uom,
-					"conversion_factor": flt(uom_row.conversion_factor or 1.0)
-				})
-				uom_set.add(uom_row.uom)
+	for uom_row in item.get("uoms") or []:
+		if uom_row.uom and uom_row.uom not in uom_set:
+			uoms.append({
+				"uom": uom_row.uom,
+				"conversion_factor": flt(uom_row.conversion_factor or 1.0)
+			})
+			uom_set.add(uom_row.uom)
 
 	if item.stock_uom and item.stock_uom not in uom_set:
 		uoms.insert(0, {"uom": item.stock_uom, "conversion_factor": 1.0})
