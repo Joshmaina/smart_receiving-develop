@@ -46,18 +46,34 @@
 							<div class="muted">Stock: {{ row.current_stock }} {{ row.stock_uom }}</div>
 						</td>
 						<td class="po-qty-cell">{{ row.po_qty ? row.po_qty : '-' }}</td>
-						<td>
+						<td class="recv-qty-cell">
 							<div class="qty-uom-wrap">
-								<input type="number" min="0" step="any" v-model.number="row.qty" class="num" />
-								<select v-if="row.is_multi_uom" v-model="row.uom" @change="onUomSelectChange(row)" class="uom-select">
+								<input
+									:id="'qty-input-' + row.item_code"
+									:name="'qty_' + row.item_code"
+									type="number"
+									min="0"
+									step="any"
+									v-model.number="row.qty"
+									class="num"
+									placeholder="0.00"
+								/>
+								<select
+									v-if="row.available_uoms && row.available_uoms.length > 1"
+									:id="'uom-select-' + row.item_code"
+									:name="'uom_' + row.item_code"
+									v-model="row.uom"
+									@change="handleUomChange(row)"
+									class="uom-select"
+								>
 									<option v-for="u in row.available_uoms" :key="u.uom" :value="u.uom">
-										{{ u.label || (u.uom + " (" + u.conversion_factor + " " + row.stock_uom + ")") }}
+										{{ u.label }}
 									</option>
 								</select>
 								<span v-else class="uom-label">{{ row.uom || row.stock_uom }}</span>
 							</div>
-							<div v-if="row.uom && row.uom !== row.stock_uom" class="uom-hint muted">
-								⚡ Equivalent: {{ round2(row.qty * row.conversion_factor) }} {{ row.stock_uom }} ({{ row.conversion_factor }} {{ row.stock_uom }}/{{ row.uom }})
+							<div v-if="row.conversion_factor > 1 || (row.uom && row.uom !== row.stock_uom)" class="uom-hint muted">
+								⚡ Equivalent: <strong>{{ round2(row.qty * row.conversion_factor) }} {{ row.stock_uom }}</strong> ({{ row.conversion_factor }} {{ row.stock_uom }}/{{ row.uom }})
 							</div>
 						</td>
 						<td>
@@ -148,11 +164,15 @@ function focusSearch() {
 	});
 }
 
-function onUomSelectChange(row) {
-	const found = (row.available_uoms || []).find((u) => u.uom === row.uom);
-	if (found) {
-		row.conversion_factor = flt(found.conversion_factor || 1.0);
+function handleUomChange(row) {
+	const selected = (row.available_uoms || []).find((u) => u.uom === row.uom);
+	if (selected) {
+		row.conversion_factor = flt(selected.conversion_factor || 1.0);
 	}
+}
+
+function onUomSelectChange(row) {
+	handleUomChange(row);
 }
 
 function onSearchInput() {

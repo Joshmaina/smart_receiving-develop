@@ -10,31 +10,34 @@ export function buildCartRow(context, overrides = {}) {
 	}
 
 	const stockUom = context.stock_uom || "Pcs";
-	const rawUoms = context.uoms && context.uoms.length > 0
+	const rawUoms = (context.uoms && context.uoms.length > 0)
 		? context.uoms
 		: [{ uom: stockUom, conversion_factor: 1.0 }];
 
-	const uoms = rawUoms.map((u) => {
-		const factor = flt(u.conversion_factor || 1.0);
+	const available_uoms = rawUoms.map((u) => {
+		const factor = flt(u.conversion_factor) || 1.0;
 		return {
 			uom: u.uom,
 			conversion_factor: factor,
-			label: `${u.uom} (${factor} ${stockUom})`,
+			label: factor > 1
+				? `${u.uom} (${factor} ${stockUom})`
+				: `${u.uom} (1 ${stockUom})`
 		};
 	});
 
-	const defaultUom = overrides.uom || context.default_purchase_uom || stockUom;
-	const selectedUomObj = uoms.find((u) => u.uom === defaultUom) || uoms[0] || { uom: stockUom, conversion_factor: 1.0, label: `${stockUom} (1 ${stockUom})` };
+	const selected_uom = overrides.uom || context.default_purchase_uom || stockUom;
+	const active_uom_obj = available_uoms.find((u) => u.uom === selected_uom) || available_uoms[0] || { uom: stockUom, conversion_factor: 1.0, label: `${stockUom} (1 ${stockUom})` };
 
 	return {
+		row_id: `row-${context.item_code}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
 		item_code: context.item_code,
 		item_name: context.item_name,
 		stock_uom: stockUom,
 		current_stock: context.current_stock,
-		uom: selectedUomObj.uom,
-		conversion_factor: overrides.conversion_factor ?? selectedUomObj.conversion_factor ?? 1.0,
-		available_uoms: uoms,
-		is_multi_uom: context.is_multi_uom ?? (uoms.length > 1),
+		uom: active_uom_obj.uom,
+		conversion_factor: overrides.conversion_factor ?? active_uom_obj.conversion_factor ?? 1.0,
+		available_uoms: available_uoms,
+		is_multi_uom: available_uoms.length > 1,
 		po_qty: overrides.po_qty ?? context.po_qty ?? 0,
 		qty: overrides.qty ?? 1,
 		rate_excl: overrides.rate_excl ?? context.last_purchase_rate ?? 0,
