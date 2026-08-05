@@ -298,7 +298,12 @@ const canSubmit = computed(() => {
 });
 
 function onAddItem(row) {
-	cartItems.value.push(row);
+	const existing = cartItems.value.find((i) => i.item_code === row.item_code);
+	if (existing) {
+		existing.qty = (flt(existing.qty) || 0) + (flt(row.qty) || 1);
+	} else {
+		cartItems.value.push(row);
+	}
 }
 function onRemoveItem(idx) {
 	cartItems.value.splice(idx, 1);
@@ -868,6 +873,36 @@ onMounted(async () => {
 }
 .smart-receiving-app .draft-row {
 	cursor: pointer;
+}
+
+.smart-receiving-app .row-over-po {
+	background-color: #fef2f2 !important;
+	border-left: 4px solid #ef4444 !important;
+}
+.smart-receiving-app .tax-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 4px;
+	margin-top: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+.smart-receiving-app .badge-vat {
+	background-color: #e0e7ff !important;
+	color: #3730a3 !important;
+	border: 1px solid #c7d2fe !important;
+}
+.smart-receiving-app .badge-exempt {
+	background-color: #fef3c7 !important;
+	color: #92400e !important;
+	border: 1px solid #fde68a !important;
+}
+.smart-receiving-app .badge-zero {
+	background-color: #d1fae5 !important;
+	color: #065f46 !important;
+	border: 1px solid #a7f3d0 !important;
 }
 .smart-receiving-app .draft-row:hover {
 	background: var(--gray-50, #fafbfc);

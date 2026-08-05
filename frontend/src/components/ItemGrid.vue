@@ -426,3 +426,36 @@ input.num {
 	color: var(--text-muted, #777);
 }
 </style>
+
+<style>
+.row-over-po {
+	background-color: #fef2f2 !important;
+	border-left: 4px solid #ef4444 !important;
+}
+.tax-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 4px;
+	margin-top: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+.badge-vat {
+	background-color: #e0e7ff !important;
+	color: #3730a3 !important;
+	border: 1px solid #c7d2fe !important;
+}
+.badge-exempt {
+	background-color: #fef3c7 !important;
+	color: #92400e !important;
+	border: 1px solid #fde68a !important;
+}
+.badge-zero {
+	background-color: #d1fae5 !important;
+	color: #065f46 !important;
+	border: 1px solid #a7f3d0 !important;
+}
+</style>
+
