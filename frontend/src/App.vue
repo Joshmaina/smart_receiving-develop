@@ -149,32 +149,32 @@
 		<p v-else class="muted attach-hint">Save as Draft first to validate the supplier's KRA invoice.</p>
 
 		<div class="payment-block">
-			<label class="toggle-row">
+			<label for="payment-enabled-toggle" class="toggle-row">
 				<span class="toggle-switch">
-					<input type="checkbox" v-model="payment.enabled" @change="onPaymentToggle" />
+					<input id="payment-enabled-toggle" name="payment_enabled" type="checkbox" v-model="payment.enabled" @change="onPaymentToggle" aria-label="Record payment now" />
 					<span class="toggle-slider"></span>
 				</span>
 				Record payment now
 			</label>
 			<div v-if="payment.enabled" class="payment-fields">
 				<div class="field">
-					<label>Mode of Payment *</label>
-					<select v-model="payment.mode_of_payment">
+					<label for="payment-mode-select">Mode of Payment *</label>
+					<select id="payment-mode-select" name="payment_mode" v-model="payment.mode_of_payment" aria-label="Mode of Payment">
 						<option value="" disabled>Choose mode</option>
 						<option v-for="m in modesOfPayment" :key="m.name" :value="m.name">{{ m.name }}</option>
 					</select>
 				</div>
 				<div class="field">
-					<label>Amount *</label>
-					<MoneyInput :value="payment.amount" @input="payment.amount = flt($event.target.value)" />
+					<label for="payment-amount-input">Amount *</label>
+					<MoneyInput id="payment-amount-input" name="payment_amount" aria-label="Payment Amount" :value="payment.amount" @input="payment.amount = flt($event.target.value)" />
 				</div>
 				<div class="field">
-					<label>Reference No *</label>
-					<input type="text" v-model="payment.reference_no" placeholder="Required" />
+					<label for="payment-ref-no">Reference No *</label>
+					<input id="payment-ref-no" name="payment_reference_no" type="text" v-model="payment.reference_no" placeholder="Required" aria-label="Payment Reference Number" />
 				</div>
 				<div class="field">
-					<label>Reference Date</label>
-					<input type="date" v-model="payment.reference_date" />
+					<label for="payment-ref-date">Reference Date</label>
+					<input id="payment-ref-date" name="payment_reference_date" type="date" v-model="payment.reference_date" aria-label="Payment Reference Date" />
 				</div>
 			</div>
 		</div>
