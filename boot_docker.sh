@@ -47,10 +47,26 @@ docker exec -u 0 $BACKEND sh -c "
   chmod -R 755 /home/frappe/frappe-bench/sites/assets
 "
 
-echo -e "\n5. Clearing Cache & Reloading Nginx..."
+echo -e "\n5. Clearing Cache..."
 docker exec -w /home/frappe/frappe-bench/sites $BACKEND bench --site site1.localhost clear-cache
+
+echo -e "\n6. Copying Assets to Shared Nginx Web Volume..."
+docker exec -u 0 $BACKEND sh -c "
+  rm -rf /home/frappe/frappe-bench/sites/assets
+  mkdir -p /home/frappe/frappe-bench/sites/assets
+  cp -rL /home/frappe/frappe-bench/assets/* /home/frappe/frappe-bench/sites/assets/ 2>/dev/null || true
+  mkdir -p /home/frappe/frappe-bench/sites/assets/smart_receiving/page/smart_receiving \
+           /home/frappe/frappe-bench/sites/assets/smart_receiving/js
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/public/* /home/frappe/frappe-bench/sites/assets/smart_receiving/ 2>/dev/null || true
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/page/* /home/frappe/frappe-bench/sites/assets/smart_receiving/page/ 2>/dev/null || true
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/page/smart_receiving/smart_receiving.js /home/frappe/frappe-bench/sites/assets/smart_receiving/js/ 2>/dev/null || true
+  chown -R frappe:frappe /home/frappe/frappe-bench/sites/assets
+  chmod -R 755 /home/frappe/frappe-bench/sites/assets
+"
+
+echo -e "\n7. Reloading Nginx..."
 docker exec $FRONTEND nginx -s reload
 
 echo -e "\n=================================================="
-echo "  SUCCESS! Open in browser: http://localhost:8080/app/smart-receiving"
+echo "  SUCCESS! Open in browser: http://localhost:8080/app/smart_receiving"
 echo "=================================================="

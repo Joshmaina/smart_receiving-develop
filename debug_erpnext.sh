@@ -42,12 +42,23 @@ echo -e "\n4. Checking Compiled JS/CSS Bundles & Media..."
 docker exec -it $FRONTEND ls -la /usr/share/nginx/html/sites/assets/frappe/dist/css/ 2>/dev/null || echo "MISSING: frappe/dist/css"
 docker exec -it $FRONTEND ls -la /usr/share/nginx/html/sites/assets/frappe/sounds/ 2>/dev/null || echo "MISSING: frappe/sounds"
 
-echo -e "\n5. Reloading Nginx & Clearing Backend Cache..."
+echo -e "\n5. Clearing Backend Cache & Restoring Physical Assets Volume..."
+docker exec -it -w /home/frappe/frappe-bench/sites $BACKEND bench --site site1.localhost clear-cache
+docker exec -u 0 $BACKEND sh -c "
+  rm -rf /home/frappe/frappe-bench/sites/assets
+  mkdir -p /home/frappe/frappe-bench/sites/assets
+  cp -rL /home/frappe/frappe-bench/assets/* /home/frappe/frappe-bench/sites/assets/ 2>/dev/null || true
+  mkdir -p /home/frappe/frappe-bench/sites/assets/smart_receiving/page/smart_receiving /home/frappe/frappe-bench/sites/assets/smart_receiving/js
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/public/* /home/frappe/frappe-bench/sites/assets/smart_receiving/ 2>/dev/null || true
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/page/* /home/frappe/frappe-bench/sites/assets/smart_receiving/page/ 2>/dev/null || true
+  cp -rL /home/frappe/frappe-bench/apps/smart_receiving/smart_receiving/page/smart_receiving/smart_receiving.js /home/frappe/frappe-bench/sites/assets/smart_receiving/js/ 2>/dev/null || true
+  chown -R frappe:frappe /home/frappe/frappe-bench/sites/assets
+  chmod -R 755 /home/frappe/frappe-bench/sites/assets
+"
+
+echo -e "\n6. Reloading Nginx..."
 docker exec -u 0 -it $FRONTEND chmod -R 755 /usr/share/nginx/html/sites
 docker exec $FRONTEND nginx -s reload
-docker restart $BACKEND > /dev/null
-sleep 4
-docker exec -it -w /home/frappe/frappe-bench/sites $BACKEND bench --site site1.localhost clear-cache
 
 echo -e "\n=================================================="
 echo "SUCCESS! Hard refresh browser (Ctrl + Shift + R)."
