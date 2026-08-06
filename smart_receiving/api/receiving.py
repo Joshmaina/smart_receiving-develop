@@ -969,8 +969,9 @@ def _fetch_kra_invoice_for_log(log):
 
 @frappe.whitelist()
 def validate_kra_invoice(
-	purchase_invoice,
-	cu_invoice_number,
+	purchase_invoice=None,
+	supplier=None,
+	cu_invoice_number=None,
 	etims_supplier_pin=None,
 	etims_branch_id=None,
 	etims_receipt_signature=None,
@@ -979,6 +980,9 @@ def validate_kra_invoice(
 	"""Create/update the KRA Invoice Validation log for a Purchase Invoice,
 	auto-detecting TIMS vs eTIMS from the CU Invoice Number format, and fetch
 	its details from the live KRA endpoint.
+
+	Can be called either with an existing ``purchase_invoice`` name or
+	transiently on a fresh form with ``supplier``.
 
 	For eTIMS, ``etims_scanned_data`` (pasted from any QR scanner app, or the
 	full/partial URL text) takes priority over the three manual fields - a
@@ -990,22 +994,40 @@ def validate_kra_invoice(
 	transmitted yet - both leave status "Pending" rather than losing input or
 	hard-failing, since the nightly retry job is meant to pick these back up.
 	"""
+	if not cu_invoice_number:
+		frappe.throw("CU Invoice Number is required for KRA Invoice Validation")
+
 	source = _detect_kra_invoice_source(cu_invoice_number)
 	cu_invoice_number = cu_invoice_number.strip()
 
-	pi_supplier = frappe.db.get_value("Purchase Invoice", purchase_invoice, "supplier")
-	if not pi_supplier:
-		frappe.throw(f"Purchase Invoice {purchase_invoice} not found")
+	if purchase_invoice:
+		pi_supplier = frappe.db.get_value("Purchase Invoice", purchase_invoice, "supplier")
+		if not pi_supplier:
+			frappe.throw(f"Purchase Invoice {purchase_invoice} not found")
+	else:
+		pi_supplier = supplier
+		if not pi_supplier:
+			frappe.throw("Supplier is required for KRA Invoice Validation")
 
-	existing_name = frappe.db.get_value(
-		"KRA Invoice Validation", {"purchase_invoice": purchase_invoice}, "name"
-	)
+	existing_name = None
+	if purchase_invoice:
+		existing_name = frappe.db.get_value(
+			"KRA Invoice Validation", {"purchase_invoice": purchase_invoice}, "name"
+		)
+	elif cu_invoice_number:
+		existing_name = frappe.db.get_value(
+			"KRA Invoice Validation",
+			{"cu_invoice_number": cu_invoice_number, "supplier": pi_supplier},
+			"name",
+		)
+
 	log = (
 		frappe.get_doc("KRA Invoice Validation", existing_name)
 		if existing_name
 		else frappe.new_doc("KRA Invoice Validation")
 	)
-	log.purchase_invoice = purchase_invoice
+	if purchase_invoice:
+		log.purchase_invoice = purchase_invoice
 	log.supplier = pi_supplier
 	log.cu_invoice_number = cu_invoice_number
 	log.invoice_source = source
@@ -1038,6 +1060,15 @@ def validate_kra_invoice(
 		message = f"{fetched.get('pending_reason') or 'Not available yet'} - saved as Pending, will retry nightly."
 
 	return {"name": log.name, "status": log.status, "claimable": log.claimable, "message": message}
+
+
+@frappe.whitelist()
+def link_kra_validation_to_invoice(validation_log, purchase_invoice):
+	"""Link a transient KRA Invoice Validation log to a newly created Purchase Invoice."""
+	if validation_log and purchase_invoice:
+		frappe.db.set_value("KRA Invoice Validation", validation_log, "purchase_invoice", purchase_invoice)
+		return True
+	return False
 
 
 @frappe.whitelist()

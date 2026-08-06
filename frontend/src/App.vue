@@ -73,21 +73,23 @@
 			</div>
 		</div>
 
-		<div v-if="currentDraftName" class="attach-block">
+		<div class="attach-block">
 			<div class="bill-block-title">Supplier Invoice Document</div>
 			<ul v-if="attachedFiles.length" class="attached-files">
 				<li v-for="f in attachedFiles" :key="f.name">
 					<a :href="f.file_url" target="_blank">{{ f.file_name }}</a>
 				</li>
 			</ul>
+			<div v-if="pendingFile" class="pending-file-badge">
+				✓ Attached for upload: <strong>{{ pendingFile.name }}</strong>
+			</div>
 			<label for="supplier-file-attachment" class="sr-only">Attach supplier invoice document</label>
-			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" autocomplete="off" aria-label="Attach supplier invoice document" />
+			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" autocomplete="off" aria-label="Attach supplier invoice document" accept=".pdf,.png,.jpg,.jpeg" />
 			<span v-if="attaching" class="muted">Uploading...</span>
 			<span v-if="attachError" class="error">{{ attachError }}</span>
 		</div>
-		<p v-else class="muted attach-hint">Save as Draft first to attach the supplier's invoice document.</p>
 
-		<div v-if="currentDraftName" class="kra-block">
+		<div class="kra-block">
 			<div class="bill-block-title">KRA Validation</div>
 			<div class="bill-row">
 				<label for="kra-cu-invoice-number" class="field kra-cu-field">
@@ -150,7 +152,6 @@
 				<span v-if="kra.message" class="muted"> ({{ kra.message }})</span>
 			</div>
 		</div>
-		<p v-else class="muted attach-hint">Save as Draft first to validate the supplier's KRA invoice.</p>
 
 		<div class="payment-block">
 			<label for="payment-enabled-toggle" class="toggle-row">
@@ -309,6 +310,8 @@ const modesOfPayment = ref([]);
 const expenseAccounts = ref([]);
 
 const attachedFiles = ref([]);
+const pendingFile = ref(null);
+const kraLogName = ref(null);
 const attaching = ref(false);
 const attachError = ref(null);
 
@@ -374,6 +377,7 @@ function addExpenseRow() {
 const isEtimsNumber = computed(() => kra.cu_invoice_number.trim().toUpperCase().startsWith("KRACU"));
 const canValidateKra = computed(() => {
 	if (!kra.cu_invoice_number) return false;
+	if (!header.supplier) return false;
 	if (!isEtimsNumber.value) return true;
 	if (kra.etims_scanned_data) return true;
 	return kra.etims_supplier_pin && kra.etims_branch_id && kra.etims_receipt_signature;
@@ -383,7 +387,8 @@ async function onValidateKra() {
 	validatingKra.value = true;
 	try {
 		const result = await call("smart_receiving.smart_receiving.api.receiving.validate_kra_invoice", {
-			purchase_invoice: currentDraftName.value,
+			purchase_invoice: currentDraftName.value || null,
+			supplier: header.supplier,
 			cu_invoice_number: kra.cu_invoice_number,
 			etims_supplier_pin: isEtimsNumber.value ? kra.etims_supplier_pin : null,
 			etims_branch_id: isEtimsNumber.value ? kra.etims_branch_id : null,
@@ -393,6 +398,7 @@ async function onValidateKra() {
 		kra.status = result.status;
 		kra.claimable = result.claimable;
 		kra.message = result.message || "";
+		kraLogName.value = result.name;
 	} catch (e) {
 		kra.status = "Failed";
 		kra.message = e.message || "KRA validation failed";
@@ -413,15 +419,45 @@ async function loadAttachedFiles(name) {
 async function onAttachFile(event) {
 	const file = event.target.files[0];
 	event.target.value = "";
-	if (!file || !currentDraftName.value) return;
+	if (!file) return;
 
-	attaching.value = true;
-	attachError.value = null;
+	if (currentDraftName.value) {
+		attaching.value = true;
+		attachError.value = null;
+		try {
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("doctype", "Purchase Invoice");
+			formData.append("docname", currentDraftName.value);
+			formData.append("is_private", "1");
+
+			const response = await fetch("/api/method/upload_file", {
+				method: "POST",
+				headers: { "X-Frappe-CSRF-Token": window.frappe?.csrf_token || "" },
+				body: formData,
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				throw new Error(data.message || data.exc || "Upload failed");
+			}
+			await loadAttachedFiles(currentDraftName.value);
+		} catch (e) {
+			attachError.value = e.message || "Failed to upload file";
+		} finally {
+			attaching.value = false;
+		}
+	} else {
+		pendingFile.value = file;
+	}
+}
+
+async function uploadPendingAttachment(docname) {
+	if (!pendingFile.value || !docname) return;
 	try {
 		const formData = new FormData();
-		formData.append("file", file);
+		formData.append("file", pendingFile.value);
 		formData.append("doctype", "Purchase Invoice");
-		formData.append("docname", currentDraftName.value);
+		formData.append("docname", docname);
 		formData.append("is_private", "1");
 
 		const response = await fetch("/api/method/upload_file", {
@@ -429,15 +465,23 @@ async function onAttachFile(event) {
 			headers: { "X-Frappe-CSRF-Token": window.frappe?.csrf_token || "" },
 			body: formData,
 		});
-		const data = await response.json();
-		if (!response.ok) {
-			throw new Error(data.message || data.exc || "Upload failed");
+		if (response.ok) {
+			pendingFile.value = null;
 		}
-		await loadAttachedFiles(currentDraftName.value);
 	} catch (e) {
-		attachError.value = e.message || "Failed to upload file";
-	} finally {
-		attaching.value = false;
+		console.error("Failed to upload pending attachment:", e);
+	}
+}
+
+async function linkKraLogToInvoice(docname) {
+	if (!kraLogName.value || !docname) return;
+	try {
+		await call("smart_receiving.smart_receiving.api.receiving.link_kra_validation_to_invoice", {
+			validation_log: kraLogName.value,
+			purchase_invoice: docname,
+		});
+	} catch (e) {
+		console.error("Failed to link KRA validation log:", e);
 	}
 }
 
@@ -455,6 +499,8 @@ function resetForm(clearSubmitted = true) {
 	Object.assign(bill, freshBill());
 	Object.assign(kra, freshKra());
 	attachedFiles.value = [];
+	pendingFile.value = null;
+	kraLogName.value = null;
 	attachError.value = null;
 	clientRequestId.value = generateRequestId();
 	savedResult.value = null;
@@ -487,6 +533,8 @@ async function loadDraft(name) {
 	submittedResult.value = null;
 	submitError.value = null;
 	attachError.value = null;
+	pendingFile.value = null;
+	kraLogName.value = null;
 	await loadAttachedFiles(draft.name);
 
 	const existingKra = await call("smart_receiving.smart_receiving.api.receiving.get_kra_validation", {
@@ -501,6 +549,7 @@ async function loadDraft(name) {
 		kra.etims_branch_id = existingKra.etims_branch_id || "";
 		kra.etims_receipt_signature = existingKra.etims_receipt_signature || "";
 		kra.etims_scanned_data = existingKra.etims_scanned_data || "";
+		kraLogName.value = existingKra.name;
 	} else {
 		Object.assign(kra, freshKra());
 	}
@@ -544,8 +593,6 @@ function buildCart() {
 		})),
 		additional_discount_percentage: bill.discount_percentage,
 		additional_expenses: bill.additional_expenses.filter((e) => e.expense_account && flt(e.amount) > 0),
-		// Not acted upon until Save and Submit - stored as-is so a partial
-		// payment entered before a Save as Draft isn't lost on resume.
 		planned_payment: payment.enabled ? { ...payment } : null,
 	};
 }
@@ -560,6 +607,13 @@ async function saveDraft() {
 		});
 		currentDraftName.value = result.name;
 		savedResult.value = result;
+
+		if (pendingFile.value) {
+			await uploadPendingAttachment(result.name);
+		}
+		if (kraLogName.value) {
+			await linkKraLogToInvoice(result.name);
+		}
 
 		const clientTotal = flt(finalGrandTotal.value);
 		const serverTotal = flt(result.grand_total);
@@ -592,6 +646,13 @@ async function submitReceiving() {
 			payment: payment.enabled ? payment : null,
 			client_request_id: clientRequestId.value,
 		});
+
+		if (pendingFile.value) {
+			await uploadPendingAttachment(result.name);
+		}
+		if (kraLogName.value) {
+			await linkKraLogToInvoice(result.name);
+		}
 
 		const clientTotal = flt(finalGrandTotal.value);
 		const serverTotal = flt(result.grand_total);
@@ -845,6 +906,16 @@ onMounted(async () => {
 	padding: 14px 16px;
 	border: 1px solid var(--dark-border-color, #e5e7eb);
 	border-radius: 8px;
+}
+.smart-receiving-app .pending-file-badge {
+	color: #065f46;
+	background-color: #d1fae5;
+	border: 1px solid #a7f3d0;
+	padding: 6px 12px;
+	border-radius: 6px;
+	font-size: 13px;
+	margin-bottom: 10px;
+	display: inline-block;
 }
 .smart-receiving-app .attach-hint {
 	margin: 8px 0 0;
