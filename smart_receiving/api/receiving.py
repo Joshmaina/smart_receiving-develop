@@ -93,10 +93,23 @@ def get_item_receiving_context(item_code, warehouse=None):
 	"""
 	item = frappe.get_doc("Item", item_code)
 
-	# Build structured UOM array from Item.uoms child table
+	# Build structured UOM array from Item.uoms child table + direct DB query fallback
 	uoms = []
 	uom_set = set()
 	for uom_row in item.get("uoms") or []:
+		if uom_row.uom and uom_row.uom not in uom_set:
+			uoms.append({
+				"uom": uom_row.uom,
+				"conversion_factor": flt(uom_row.conversion_factor or 1.0)
+			})
+			uom_set.add(uom_row.uom)
+
+	db_uoms = frappe.get_all(
+		"UOM Conversion Detail",
+		filters={"parent": item_code},
+		fields=["uom", "conversion_factor"]
+	)
+	for uom_row in db_uoms:
 		if uom_row.uom and uom_row.uom not in uom_set:
 			uoms.append({
 				"uom": uom_row.uom,

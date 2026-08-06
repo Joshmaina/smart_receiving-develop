@@ -62,7 +62,7 @@
 									:aria-label="'Received Quantity for ' + row.item_code"
 								/>
 								<select
-									v-if="row.is_multi_uom && row.available_uoms && row.available_uoms.length > 1"
+									v-if="row.available_uoms && row.available_uoms.length > 1"
 									:id="'uom-select-' + row.item_code"
 									:name="'uom_' + row.item_code"
 									v-model="row.uom"
