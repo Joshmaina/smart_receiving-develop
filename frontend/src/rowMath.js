@@ -34,6 +34,14 @@ export function priceMargin(vatTemplates, row, price) {
 	return ((sp - marginCostBasis(vatTemplates, row)) / sp) * 100;
 }
 
+export function priceFromMargin(vatTemplates, row, targetMargin) {
+	const tm = flt(targetMargin);
+	if (tm >= 100) return 0;
+	const cb = marginCostBasis(vatTemplates, row);
+	if (!cb) return 0;
+	return cb / (1 - tm / 100);
+}
+
 export function lineTotal(vatTemplates, row) {
 	const net = flt(row.qty) * costBasis(row);
 	return net * (1 + vatRate(vatTemplates, row) / 100);

@@ -134,7 +134,29 @@
 						<td></td>
 						<td colspan="8">
 							<div class="price-panel">
-								<div class="price-panel-title">Selling prices</div>
+								<div class="price-panel-header">
+									<div class="price-panel-title">Selling prices &amp; Profit Margins</div>
+									<div class="target-margin-tools">
+										<label :for="'target-margin-' + row.item_code" class="target-margin-label">
+											<span>⚡ Quick Target Margin %:</span>
+											<input
+												:id="'target-margin-' + row.item_code"
+												type="number"
+												min="0"
+												max="99"
+												step="any"
+												v-model.number="row.target_margin"
+												placeholder="e.g. 35"
+												class="num target-margin-input"
+												@input="applyTargetMargin(row)"
+											/>
+										</label>
+										<button type="button" class="preset-btn" @click="applyTargetMargin(row, 25)">25%</button>
+										<button type="button" class="preset-btn" @click="applyTargetMargin(row, 30)">30%</button>
+										<button type="button" class="preset-btn" @click="applyTargetMargin(row, 35)">35%</button>
+										<button type="button" class="preset-btn" @click="applyTargetMargin(row, 40)">40%</button>
+									</div>
+								</div>
 								<div class="price-panel-grid">
 									<label v-for="(value, priceList) in row.prices" :key="priceList" :for="'price-' + row.item_code + '-' + priceList.replace(/\s+/g, '-').toLowerCase()" class="price-field">
 										<span>
@@ -148,7 +170,9 @@
 											:value="round2(row.prices[priceList])"
 											@input="row.prices[priceList] = flt($event.target.value)"
 										/>
-										<span class="margin-hint muted">Margin: {{ round2(priceMargin(row, value)) }}%</span>
+										<span :class="['margin-badge', marginBadgeClass(priceMargin(row, value))]">
+											Margin: {{ round2(priceMargin(row, value)) }}%
+										</span>
 									</label>
 								</div>
 							</div>
@@ -277,6 +301,33 @@ function vatAmount(row) {
 }
 function priceMargin(row, price) {
 	return rowMath.priceMargin(props.vatTemplates, row, price);
+}
+
+function marginBadgeClass(margin) {
+	const m = flt(margin);
+	if (m >= 30) return "margin-badge-high";
+	if (m >= 15) return "margin-badge-mid";
+	return "margin-badge-low";
+}
+
+function applyTargetMargin(row, presetMargin = null) {
+	if (presetMargin !== null && presetMargin !== undefined) {
+		row.target_margin = presetMargin;
+	}
+	const tm = flt(row.target_margin);
+	if (tm > 0 && tm < 100) {
+		const newPrice = rowMath.priceFromMargin(props.vatTemplates, row, tm);
+		if (newPrice > 0) {
+			const primaryList = row.primary_price_list;
+			if (primaryList && row.prices[primaryList] !== undefined) {
+				row.prices[primaryList] = round2(newPrice);
+			} else {
+				for (const pl of Object.keys(row.prices)) {
+					row.prices[pl] = round2(newPrice);
+				}
+			}
+		}
+	}
 }
 function lineTotal(row) {
 	return rowMath.lineTotal(props.vatTemplates, row);
@@ -462,12 +513,54 @@ input.num {
 .price-panel {
 	padding: 10px 4px;
 }
+.price-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+.target-margin-tools {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.target-margin-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--text-color, #1f2937);
+}
+.target-margin-input {
+	width: 70px !important;
+	padding: 3px 6px !important;
+	text-align: right;
+}
+.preset-btn {
+	background: var(--gray-100, #f4f5f6);
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 4px;
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+	color: var(--text-color, #1f2937);
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.preset-btn:hover {
+	background: var(--primary, #5e64ff);
+	color: #ffffff;
+	border-color: var(--primary, #5e64ff);
+}
 .price-panel-title {
 	font-weight: 600;
 	font-size: 12px;
 	text-transform: uppercase;
 	color: var(--text-muted, #6b7280);
-	margin-bottom: 8px;
+	margin-bottom: 0;
 }
 .price-panel-grid {
 	display: flex;
@@ -487,6 +580,15 @@ input.num {
 }
 .margin-hint {
 	font-size: 11px;
+}
+.margin-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 4px;
+	margin-top: 4px;
+	letter-spacing: 0.02em;
 }
 .totals-label {
 	text-align: right;
@@ -530,6 +632,21 @@ input.num {
 	background-color: #d1fae5 !important;
 	color: #065f46 !important;
 	border: 1px solid #a7f3d0 !important;
+}
+.margin-badge-high {
+	background-color: #d1fae5 !important;
+	color: #065f46 !important;
+	border: 1px solid #a7f3d0 !important;
+}
+.margin-badge-mid {
+	background-color: #fef3c7 !important;
+	color: #92400e !important;
+	border: 1px solid #fde68a !important;
+}
+.margin-badge-low {
+	background-color: #fee2e2 !important;
+	color: #991b1b !important;
+	border: 1px solid #fca5a5 !important;
 }
 </style>
 
