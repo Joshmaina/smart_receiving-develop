@@ -27,7 +27,6 @@
 				<tr>
 					<th></th>
 					<th>Item</th>
-					<th>PO Qty</th>
 					<th>Recv Qty</th>
 					<th>Cost (Excl. VAT)</th>
 					<th>VAT</th>
@@ -39,7 +38,7 @@
 			</thead>
 			<tbody>
 				<template v-for="(row, idx) in items" :key="row.item_code">
-					<tr :class="['item-row', { 'row-over-po': row.po_qty > 0 && row.qty > row.po_qty }]">
+					<tr class="item-row">
 						<td class="expand-cell">
 							<button type="button" class="icon-btn" @click="row.expanded = !row.expanded">
 								{{ row.expanded ? "▼" : "▶" }}
@@ -49,7 +48,6 @@
 							<div class="item-name">{{ row.item_code }} - {{ row.item_name }}</div>
 							<div class="muted">Stock: {{ row.current_stock }} {{ row.stock_uom }}</div>
 						</td>
-						<td class="po-qty-cell">{{ row.po_qty ? row.po_qty : '-' }}</td>
 						<td class="recv-qty-cell">
 							<div class="qty-uom-wrap">
 								<input
@@ -64,11 +62,11 @@
 									:aria-label="'Received Quantity for ' + row.item_code"
 								/>
 								<select
-									v-if="row.available_uoms && row.available_uoms.length > 1"
+									v-if="row.is_multi_uom && row.available_uoms && row.available_uoms.length > 1"
 									:id="'uom-select-' + row.item_code"
 									:name="'uom_' + row.item_code"
 									v-model="row.uom"
-									@change="handleUomChange(row)"
+									@change="onUomSelectChange(row)"
 									class="uom-select"
 									:aria-label="'Unit of Measure for ' + row.item_code"
 								>
@@ -79,7 +77,7 @@
 								<span v-else class="uom-label">{{ row.uom || row.stock_uom }}</span>
 							</div>
 							<div v-if="row.conversion_factor > 1 || (row.uom && row.uom !== row.stock_uom)" class="uom-hint muted">
-								⚡ Equivalent: <strong>{{ round2(row.qty * row.conversion_factor) }} {{ row.stock_uom }}</strong> ({{ row.conversion_factor }} {{ row.stock_uom }}/{{ row.uom }})
+								⚡ Equivalent: <strong>{{ round2(flt(row.qty) * flt(row.conversion_factor)) }} {{ row.stock_uom }}</strong> ({{ row.conversion_factor }} {{ row.stock_uom }}/{{ row.uom }})
 							</div>
 						</td>
 						<td>
@@ -134,7 +132,7 @@
 					</tr>
 					<tr v-if="row.expanded" class="price-panel-row">
 						<td></td>
-						<td colspan="9">
+						<td colspan="8">
 							<div class="price-panel">
 								<div class="price-panel-title">Selling prices</div>
 								<div class="price-panel-grid">
@@ -160,7 +158,7 @@
 			</tbody>
 			<tfoot>
 				<tr>
-					<td colspan="8" class="totals-label">Totals</td>
+					<td colspan="7" class="totals-label">Totals</td>
 					<td class="totals-value">{{ money(grandTotal) }}</td>
 					<td></td>
 				</tr>

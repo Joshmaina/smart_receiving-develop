@@ -109,16 +109,11 @@ def get_item_receiving_context(item_code, warehouse=None):
 		uoms.insert(0, {"uom": stock_uom, "conversion_factor": 1.0})
 		uom_set.add(stock_uom)
 
-	# Dynamic fallback: if only 1 UOM exists in DB, append common package UOMs for flexible receiving
-	if len(uoms) == 1:
-		all_uom_names = [u.name for u in frappe.get_all("UOM", fields=["name"])]
-		common_units = ["Carton", "Box", "Tray", "Half Tray", "Dozen", "Pack", "Pair", "Set", "Kg"]
-		for cu in common_units:
-			if cu in all_uom_names and cu != stock_uom and cu not in uom_set:
-				uoms.append({"uom": cu, "conversion_factor": 1.0})
-				uom_set.add(cu)
-
 	default_purchase_uom = item.purchase_uom if item.purchase_uom else stock_uom
+	if item.purchase_uom and item.purchase_uom not in uom_set:
+		uoms.append({"uom": item.purchase_uom, "conversion_factor": 1.0})
+		uom_set.add(item.purchase_uom)
+
 	is_multi_uom = len(uoms) > 1
 
 	last_purchase = get_last_purchase_details(item_code)

@@ -447,7 +447,7 @@ function changedPriceCount(result) {
 	).length;
 }
 
-function resetForm() {
+function resetForm(clearSubmitted = true) {
 	Object.assign(header, freshHeader());
 	cartItems.value = [];
 	currentDraftName.value = null;
@@ -459,7 +459,9 @@ function resetForm() {
 	clientRequestId.value = generateRequestId();
 	savedResult.value = null;
 	saveError.value = null;
-	submittedResult.value = null;
+	if (clearSubmitted) {
+		submittedResult.value = null;
+	}
 	submitError.value = null;
 }
 
@@ -598,7 +600,7 @@ async function submitReceiving() {
 		}
 
 		submittedResult.value = result;
-		resetForm();
+		resetForm(false);
 		await loadDrafts();
 	} catch (e) {
 		submitError.value = e.message || "Failed to submit receiving";
