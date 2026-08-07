@@ -76,6 +76,12 @@
 								</select>
 								<span v-else class="uom-label">{{ row.uom || row.stock_uom }}</span>
 							</div>
+							<div class="qty-steppers">
+								<button type="button" class="stepper-btn" @click="adjustQty(row, -1)" title="Decrease Qty">-1</button>
+								<button type="button" class="stepper-btn" @click="adjustQty(row, 1)" title="Increase Qty by 1">+1</button>
+								<button type="button" class="stepper-btn" @click="adjustQty(row, 5)" title="Increase Qty by 5">+5</button>
+								<button type="button" class="stepper-btn" @click="adjustQty(row, 10)" title="Increase Qty by 10">+10</button>
+							</div>
 							<div v-if="row.conversion_factor > 1 || (row.uom && row.uom !== row.stock_uom)" class="uom-hint muted">
 								⚡ Equivalent: <strong>{{ round2(flt(row.qty) * flt(row.conversion_factor)) }} {{ row.stock_uom }}</strong> ({{ row.conversion_factor }} {{ row.stock_uom }}/{{ row.uom }})
 							</div>
@@ -223,6 +229,11 @@ function focusSearch() {
 }
 
 defineExpose({ focusSearch });
+
+function adjustQty(row, delta) {
+	const current = flt(row.qty) || 0;
+	row.qty = Math.max(1, current + delta);
+}
 
 function handleUomChange(row) {
 	const selected = (row.available_uoms || []).find((u) => u.uom === row.uom);
@@ -656,6 +667,27 @@ input.num {
 	background-color: #fee2e2 !important;
 	color: #991b1b !important;
 	border: 1px solid #fca5a5 !important;
+}
+.qty-steppers {
+	display: flex;
+	gap: 3px;
+	margin-top: 4px;
+}
+.stepper-btn {
+	background: var(--gray-100, #f4f5f6);
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 3px;
+	padding: 1px 5px;
+	font-size: 10px;
+	font-weight: 700;
+	cursor: pointer;
+	color: var(--text-color, #1f2937);
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.stepper-btn:hover {
+	background: var(--primary, #5e64ff);
+	color: #ffffff;
+	border-color: var(--primary, #5e64ff);
 }
 </style>
 

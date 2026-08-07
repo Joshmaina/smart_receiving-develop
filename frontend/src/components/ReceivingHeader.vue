@@ -4,12 +4,15 @@
 			<span class="label-text">Company</span>
 			<input id="company-input" name="company" type="text" value="BEVALI ONLINE" disabled autocomplete="off" aria-label="Company Name" />
 		</label>
-		<label for="supplier-input" class="field">
+		<label for="supplier-input" class="field field-supplier">
 			<span class="label-text">Supplier *</span>
 			<input id="supplier-input" name="supplier" list="supplier-options" v-model="header.supplier" placeholder="Choose supplier" autocomplete="off" aria-label="Supplier Name" />
 			<datalist id="supplier-options">
 				<option v-for="s in suppliers" :key="s.name" :value="s.name" />
 			</datalist>
+			<div v-if="supplierBalance !== null" class="supplier-balance-badge">
+				💳 Outstanding Balance: <strong>{{ money(supplierBalance) }}</strong>
+			</div>
 		</label>
 		<label for="reference-no-input" class="field">
 			<span class="label-text">Reference No</span>
@@ -29,13 +32,34 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { call } from "../api";
+import { money } from "../format";
 
 const header = defineModel({ required: true });
 
 const suppliers = ref([]);
 const warehouses = ref([]);
+const supplierBalance = ref(null);
+
+watch(
+	() => header.value?.supplier,
+	async (newSupplier) => {
+		if (!newSupplier) {
+			supplierBalance.value = null;
+			return;
+		}
+		try {
+			const res = await call("smart_receiving.smart_receiving.api.receiving.get_supplier_balance", {
+				supplier: newSupplier,
+			});
+			supplierBalance.value = res ? res.balance : 0;
+		} catch (e) {
+			supplierBalance.value = null;
+		}
+	},
+	{ immediate: true },
+);
 
 onMounted(async () => {
 	suppliers.value = await call("frappe.client.get_list", {
@@ -93,5 +117,15 @@ onMounted(async () => {
 	outline: none;
 	border-color: var(--primary, #5e64ff);
 	box-shadow: 0 0 0 3px rgba(94, 100, 255, 0.15);
+}
+.supplier-balance-badge {
+	margin-top: 4px;
+	font-size: 11px;
+	font-weight: 600;
+	color: #3730a3;
+	background: #e0e7ff;
+	padding: 3px 8px;
+	border-radius: 4px;
+	border: 1px solid #c7d2fe;
 }
 </style>

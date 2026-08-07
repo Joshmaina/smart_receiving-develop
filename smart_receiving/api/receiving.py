@@ -1145,3 +1145,20 @@ def get_kra_validation(purchase_invoice):
 		"total_amount": flt(log.total_amount),
 		"invoice_date": str(log.invoice_date) if log.invoice_date else None,
 	}
+
+
+@frappe.whitelist()
+def get_supplier_balance(supplier):
+	"""Get current Accounts Payable GL balance for a Supplier."""
+	if not supplier:
+		return {"balance": 0.0}
+	res = frappe.db.sql(
+		"""
+		SELECT SUM(credit - debit)
+		FROM `tabGL Entry`
+		WHERE party_type='Supplier' AND party=%s AND is_cancelled=0
+		""",
+		(supplier,),
+	)
+	balance = flt(res[0][0]) if res and res[0][0] is not None else 0.0
+	return {"balance": balance}

@@ -293,6 +293,9 @@
 					- prices updated for {{ changedPriceCount(submittedResult) }} item(s)
 				</template>
 				<a :href="'/app/purchase-invoice/' + submittedResult.name" target="_blank">Open in ERPNext</a>
+				<button type="button" class="preset-btn print-grn-btn" @click="printGrn(submittedResult.name)">
+					🖨️ Print GRN
+				</button>
 			</span>
 			<span v-if="submitError" class="error">{{ submitError }}</span>
 			<button type="button" class="primary" :disabled="!canSubmit || submitting" @click="confirmAndSubmit">
@@ -300,9 +303,19 @@
 			</button>
 		</div>
 
-		<h3>Draft Receivings</h3>
+		<div class="drafts-header-row">
+			<h3>Draft Receivings</h3>
+			<input
+				v-if="drafts.length > 0"
+				type="text"
+				v-model="draftSearchTerm"
+				placeholder="🔍 Search drafts by supplier, bill no..."
+				class="draft-search-input"
+			/>
+		</div>
 		<p v-if="loadingDrafts">Loading...</p>
 		<p v-else-if="drafts.length === 0">No draft receivings yet.</p>
+		<p v-else-if="filteredDrafts.length === 0" class="muted">No matching draft found for "{{ draftSearchTerm }}".</p>
 		<table v-else class="drafts-table">
 			<thead>
 				<tr>
@@ -310,14 +323,16 @@
 					<th>Supplier</th>
 					<th>Bill No</th>
 					<th>Grand Total</th>
+					<th>Action</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="d in drafts" :key="d.name" class="draft-row" @click="loadDraft(d.name)">
-					<td>{{ d.name }}</td>
+				<tr v-for="d in filteredDrafts" :key="d.name" class="draft-row" @click="loadDraft(d.name)">
+					<td><strong>{{ d.name }}</strong></td>
 					<td>{{ d.supplier }}</td>
-					<td>{{ d.bill_no }}</td>
+					<td>{{ d.bill_no || '-' }}</td>
 					<td>{{ money(d.grand_total) }}</td>
+					<td><button type="button" class="preset-btn">Resume Draft ➔</button></td>
 				</tr>
 			</tbody>
 		</table>
@@ -487,7 +502,24 @@ const submitError = ref(null);
 
 const drafts = ref([]);
 const loadingDrafts = ref(true);
+const draftSearchTerm = ref("");
 const reconciliationWarning = ref(null);
+
+const filteredDrafts = computed(() => {
+	const term = draftSearchTerm.value.trim().toLowerCase();
+	if (!term) return drafts.value;
+	return drafts.value.filter(
+		(d) =>
+			(d.name || "").toLowerCase().includes(term) ||
+			(d.supplier || "").toLowerCase().includes(term) ||
+			(d.bill_no || "").toLowerCase().includes(term),
+	);
+});
+
+function printGrn(docname) {
+	if (!docname) return;
+	window.open(`/app/print/Purchase%20Invoice/${docname}`, "_blank");
+}
 
 function calcNetTotal() {
 	return itemsNetTotal(cartItems.value);
@@ -1469,5 +1501,34 @@ onUnmounted(() => {
 	font-size: 11px;
 	border-top: 1px dashed #e0e7ff;
 	padding-top: 6px;
+}
+
+.drafts-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 24px;
+	margin-bottom: 12px;
+}
+.drafts-header-row h3 {
+	margin: 0;
+}
+.draft-search-input {
+	padding: 6px 12px;
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 6px;
+	font-size: 13px;
+	min-width: 250px;
+}
+.print-grn-btn {
+	margin-left: 8px;
+	background: #e0e7ff !important;
+	color: #3730a3 !important;
+	border: 1px solid #c7d2fe !important;
+}
+.print-grn-btn:hover {
+	background: #c7d2fe !important;
 }
 </style>
