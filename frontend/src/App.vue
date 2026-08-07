@@ -1,93 +1,127 @@
 <template>
-	<form id="smart-receiving-form" name="smart_receiving_form" class="smart-receiving-app" @submit.prevent>
-		<ReceivingHeader v-model="header" />
-
-		<div v-if="currentDraftName" class="editing-banner">
-			Editing draft <strong>{{ currentDraftName }}</strong>
-			<button type="button" @click="resetForm">Discard &amp; start new</button>
-		</div>
-
-		<ItemGrid
-			:items="cartItems"
-			:warehouse="header.warehouse"
-			:vat-templates="vatTemplates"
-			@add="onAddItem"
-			@remove="onRemoveItem"
-		/>
-
-		<div class="bill-block">
-			<div class="bill-block-title">Bill</div>
-			<div class="bill-row">
-				<label for="additional-discount-input" class="field">
-					<span class="label-text">Additional Discount %</span>
-					<input id="additional-discount-input" name="additional_discount" type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" autocomplete="off" aria-label="Additional Discount Percentage" />
-				</label>
-			</div>
-
-			<div class="expenses">
-				<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="expense-row">
-					<label :for="'expense-account-' + idx" class="sr-only">Expense account {{ idx + 1 }}</label>
-					<select :id="'expense-account-' + idx" :name="'expense_account_' + idx" v-model="exp.expense_account" autocomplete="off" :aria-label="'Expense account ' + (idx + 1)">
-						<option value="" disabled>Choose expense account</option>
-						<option v-for="a in expenseAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
-					</select>
-					<MoneyInput :id="'expense-amount-' + idx" :name="'expense_amount_' + idx" :aria-label="'Expense amount ' + (idx + 1)" :value="exp.amount" @input="exp.amount = flt($event.target.value)" />
-					<input :id="'expense-desc-' + idx" :name="'expense_desc_' + idx" type="text" v-model="exp.description" placeholder="Description (optional)" autocomplete="off" :aria-label="'Expense description ' + (idx + 1)" />
-					<button type="button" class="icon-btn danger" @click="bill.additional_expenses.splice(idx, 1)">
-						&times;
-					</button>
+	<div :class="['smart-receiving-app-wrapper', { 'has-split-viewer': showSplitViewer && activeDoc }]">
+		<!-- Split-Screen Document Viewer Drawer -->
+		<div v-if="showSplitViewer && activeDoc" class="doc-viewer-drawer">
+			<div class="drawer-header">
+				<div class="drawer-title" :title="activeDoc.name">
+					📄 {{ activeDoc.name }}
 				</div>
-				<button type="button" class="link-btn" @click="addExpenseRow">+ Add expense (freight, handling, etc.)</button>
+				<div class="drawer-controls">
+					<button v-if="!activeDoc.isPdf" type="button" class="drawer-btn" @click="zoomDoc(-0.25)" title="Zoom Out">−</button>
+					<button v-if="!activeDoc.isPdf" type="button" class="drawer-btn" @click="docZoom = 1.0" title="Reset Zoom">{{ Math.round(docZoom * 100) }}%</button>
+					<button v-if="!activeDoc.isPdf" type="button" class="drawer-btn" @click="zoomDoc(0.25)" title="Zoom In">+</button>
+					<a :href="activeDoc.url" target="_blank" class="drawer-btn" title="Open in new tab">↗</a>
+					<button type="button" class="drawer-btn close-btn" @click="showSplitViewer = false" title="Close Split View">✕</button>
+				</div>
+			</div>
+			<div class="drawer-body">
+				<iframe v-if="activeDoc.isPdf" :src="activeDoc.url" class="doc-iframe" title="PDF Document Viewer"></iframe>
+				<div v-else class="doc-img-wrapper">
+					<img :src="activeDoc.url" :style="{ transform: 'scale(' + docZoom + ')' }" alt="Supplier Invoice Document" />
+				</div>
 			</div>
 		</div>
 
-		<div class="grand-total-bar">
-			<span>Total Payable (incl. VAT &amp; expenses)</span>
-			<strong>{{ money(finalGrandTotal) }}</strong>
-		</div>
+		<!-- Main Receiving App Container -->
+		<form id="smart-receiving-form" name="smart_receiving_form" class="smart-receiving-app" @submit.prevent>
+			<ReceivingHeader v-model="header" />
 
-		<div class="financial-breakdown-panel">
-			<div class="breakdown-title">Financial Breakdown Audit</div>
-			<div class="breakdown-row">
-				<span>Items Net Subtotal:</span>
-				<strong>{{ money(calcNetTotal()) }}</strong>
+			<div v-if="currentDraftName" class="editing-banner">
+				Editing draft <strong>{{ currentDraftName }}</strong>
+				<button type="button" @click="resetForm">Discard &amp; start new</button>
 			</div>
-			<div v-if="calcDiscountAmount() > 0" class="breakdown-row discount">
-				<span>Discount Amount Deducted ({{ bill.discount_percentage }}%):</span>
-				<strong>-{{ money(calcDiscountAmount()) }}</strong>
+
+			<ItemGrid
+				:items="cartItems"
+				:warehouse="header.warehouse"
+				:vat-templates="vatTemplates"
+				@add="onAddItem"
+				@remove="onRemoveItem"
+			/>
+
+			<div class="bill-block">
+				<div class="bill-block-title">Bill</div>
+				<div class="bill-row">
+					<label for="additional-discount-input" class="field">
+						<span class="label-text">Additional Discount %</span>
+						<input id="additional-discount-input" name="additional_discount" type="number" min="0" max="100" step="any" v-model.number="bill.discount_percentage" class="num" autocomplete="off" aria-label="Additional Discount Percentage" />
+					</label>
+				</div>
+
+				<div class="expenses">
+					<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="expense-row">
+						<label :for="'expense-account-' + idx" class="sr-only">Expense account {{ idx + 1 }}</label>
+						<select :id="'expense-account-' + idx" :name="'expense_account_' + idx" v-model="exp.expense_account" autocomplete="off" :aria-label="'Expense account ' + (idx + 1)">
+							<option value="" disabled>Choose expense account</option>
+							<option v-for="a in expenseAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+						</select>
+						<MoneyInput :id="'expense-amount-' + idx" :name="'expense_amount_' + idx" :aria-label="'Expense amount ' + (idx + 1)" :value="exp.amount" @input="exp.amount = flt($event.target.value)" />
+						<input :id="'expense-desc-' + idx" :name="'expense_desc_' + idx" type="text" v-model="exp.description" placeholder="Description (optional)" autocomplete="off" :aria-label="'Expense description ' + (idx + 1)" />
+						<button type="button" class="icon-btn danger" @click="bill.additional_expenses.splice(idx, 1)">
+							&times;
+						</button>
+					</div>
+					<button type="button" class="link-btn" @click="addExpenseRow">+ Add expense (freight, handling, etc.)</button>
+				</div>
 			</div>
-			<div class="breakdown-row">
-				<span>VAT Total (16% / Exempt / 0%):</span>
-				<strong>{{ money(calcVatTotal()) }}</strong>
-			</div>
-			<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="breakdown-row expense">
-				<span>Expense: {{ exp.description || exp.expense_account }}</span>
-				<strong>+{{ money(flt(exp.amount)) }}</strong>
-			</div>
-			<div class="breakdown-row grand-total-row">
-				<span>Calculated Grand Total:</span>
+
+			<div class="grand-total-bar">
+				<span>Total Payable (incl. VAT &amp; expenses)</span>
 				<strong>{{ money(finalGrandTotal) }}</strong>
 			</div>
-			<div v-if="reconciliationWarning" class="reconciliation-warning">
-				⚠️ {{ reconciliationWarning }}
-			</div>
-		</div>
 
-		<div class="attach-block">
-			<div class="bill-block-title">Supplier Invoice Document</div>
-			<ul v-if="attachedFiles.length" class="attached-files">
-				<li v-for="f in attachedFiles" :key="f.name">
-					<a :href="f.file_url" target="_blank">{{ f.file_name }}</a>
-				</li>
-			</ul>
-			<div v-if="pendingFile" class="pending-file-badge">
-				✓ Attached for upload: <strong>{{ pendingFile.name }}</strong>
+			<div class="financial-breakdown-panel">
+				<div class="breakdown-title">Financial Breakdown Audit</div>
+				<div class="breakdown-row">
+					<span>Items Net Subtotal:</span>
+					<strong>{{ money(calcNetTotal()) }}</strong>
+				</div>
+				<div v-if="calcDiscountAmount() > 0" class="breakdown-row discount">
+					<span>Discount Amount Deducted ({{ bill.discount_percentage }}%):</span>
+					<strong>-{{ money(calcDiscountAmount()) }}</strong>
+				</div>
+				<div class="breakdown-row">
+					<span>VAT Total (16% / Exempt / 0%):</span>
+					<strong>{{ money(calcVatTotal()) }}</strong>
+				</div>
+				<div v-for="(exp, idx) in bill.additional_expenses" :key="idx" class="breakdown-row expense">
+					<span>Expense: {{ exp.description || exp.expense_account }}</span>
+					<strong>+{{ money(flt(exp.amount)) }}</strong>
+				</div>
+				<div class="breakdown-row grand-total-row">
+					<span>Calculated Grand Total:</span>
+					<strong>{{ money(finalGrandTotal) }}</strong>
+				</div>
+				<div v-if="reconciliationWarning" class="reconciliation-warning">
+					⚠️ {{ reconciliationWarning }}
+				</div>
 			</div>
-			<label for="supplier-file-attachment" class="sr-only">Attach supplier invoice document</label>
-			<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" autocomplete="off" aria-label="Attach supplier invoice document" accept=".pdf,.png,.jpg,.jpeg" />
-			<span v-if="attaching" class="muted">Uploading...</span>
-			<span v-if="attachError" class="error">{{ attachError }}</span>
-		</div>
+
+			<div class="attach-block">
+				<div class="attach-header-row">
+					<div class="bill-block-title">Supplier Invoice Document</div>
+					<button
+						v-if="activeDoc"
+						type="button"
+						:class="['split-toggle-btn', { active: showSplitViewer }]"
+						@click="toggleSplitViewer"
+					>
+						{{ showSplitViewer ? "✕ Hide Split Viewer" : "👁️ Open Split-Screen Document Viewer" }}
+					</button>
+				</div>
+				<ul v-if="attachedFiles.length" class="attached-files">
+					<li v-for="f in attachedFiles" :key="f.name">
+						<a :href="f.file_url" target="_blank">{{ f.file_name }}</a>
+					</li>
+				</ul>
+				<div v-if="pendingFile" class="pending-file-badge">
+					✓ Attached for upload: <strong>{{ pendingFile.name }}</strong>
+				</div>
+				<label for="supplier-file-attachment" class="sr-only">Attach supplier invoice document</label>
+				<input id="supplier-file-attachment" name="supplier_file_attachment" type="file" @change="onAttachFile" autocomplete="off" aria-label="Attach supplier invoice document" accept=".pdf,.png,.jpg,.jpeg" />
+				<span v-if="attaching" class="muted">Uploading...</span>
+				<span v-if="attachError" class="error">{{ attachError }}</span>
+			</div>
 
 		<div class="kra-block">
 			<div class="bill-block-title">KRA Validation</div>
@@ -234,6 +268,7 @@
 			</tbody>
 		</table>
 	</form>
+	</div>
 </template>
 
 <script setup>
@@ -264,8 +299,8 @@ function freshPayment() {
 	return {
 		enabled: false,
 		mode_of_payment: "",
-		amount: 0,
 		reference_no: "",
+		amount: 0,
 		reference_date: today(),
 	};
 }
@@ -298,6 +333,39 @@ const bill = reactive(freshBill());
 const kra = reactive(freshKra());
 const validatingKra = ref(false);
 const showQrScanner = ref(false);
+
+const showSplitViewer = ref(false);
+const docZoom = ref(1.0);
+
+const activeDoc = computed(() => {
+	if (pendingFile.value) {
+		const isPdf = pendingFile.value.name.toLowerCase().endsWith(".pdf");
+		return {
+			name: pendingFile.value.name,
+			url: URL.createObjectURL(pendingFile.value),
+			isPdf,
+		};
+	}
+	if (attachedFiles.value.length > 0) {
+		const f = attachedFiles.value[0];
+		const isPdf = (f.file_name || f.file_url || "").toLowerCase().endsWith(".pdf");
+		return {
+			name: f.file_name || "Invoice Document",
+			url: f.file_url,
+			isPdf,
+		};
+	}
+	return null;
+});
+
+function toggleSplitViewer() {
+	if (!activeDoc.value) return;
+	showSplitViewer.value = !showSplitViewer.value;
+}
+
+function zoomDoc(delta) {
+	docZoom.value = Math.min(Math.max(0.5, Math.round((docZoom.value + delta) * 100) / 100), 3.0);
+}
 
 function onQrScanned(text) {
 	kra.etims_scanned_data = text;
@@ -1044,5 +1112,123 @@ onMounted(async () => {
 }
 .smart-receiving-app .draft-row:hover {
 	background: var(--gray-50, #fafbfc);
+}
+
+.smart-receiving-app-wrapper.has-split-viewer {
+	display: grid;
+	grid-template-columns: 480px 1fr;
+	gap: 20px;
+	align-items: start;
+	max-width: 100% !important;
+}
+
+.doc-viewer-drawer {
+	position: sticky;
+	top: 16px;
+	height: calc(100vh - 32px);
+	background: #ffffff;
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 8px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	z-index: 10;
+}
+.drawer-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	background: var(--gray-100, #f4f5f6);
+	border-bottom: 1px solid var(--dark-border-color, #e5e7eb);
+}
+.drawer-title {
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--text-color, #1f2937);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 240px;
+}
+.drawer-controls {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.drawer-btn {
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	background: #ffffff;
+	color: var(--text-color, #1f2937);
+	border-radius: 4px;
+	padding: 2px 8px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: none;
+}
+.drawer-btn:hover {
+	background: var(--gray-200, #e5e7eb);
+}
+.drawer-btn.close-btn {
+	background: var(--red-500, #ef4444);
+	color: #ffffff;
+	border-color: var(--red-500, #ef4444);
+}
+.drawer-body {
+	flex: 1;
+	overflow: auto;
+	background: #525659;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.doc-iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+.doc-img-wrapper {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	padding: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.doc-img-wrapper img {
+	max-width: 100%;
+	height: auto;
+	transition: transform 0.15s ease;
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.attach-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+.split-toggle-btn {
+	background: #e0e7ff;
+	color: #3730a3;
+	border: 1px solid #c7d2fe;
+	border-radius: 6px;
+	padding: 4px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.split-toggle-btn:hover {
+	background: #c7d2fe;
+}
+.split-toggle-btn.active {
+	background: #4338ca;
+	color: #ffffff;
+	border-color: #4338ca;
 }
 </style>
