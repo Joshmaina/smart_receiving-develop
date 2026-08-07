@@ -222,6 +222,8 @@ function focusSearch() {
 	});
 }
 
+defineExpose({ focusSearch });
+
 function handleUomChange(row) {
 	const selected = (row.available_uoms || []).find((u) => u.uom === row.uom);
 	if (selected) {
@@ -604,6 +606,13 @@ input.num {
 </style>
 
 <style>
+.item-row {
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.item-row:focus-within {
+	background-color: #f0fdf4 !important;
+	border-left: 4px solid var(--primary, #5e64ff) !important;
+}
 .row-over-po {
 	background-color: #fef2f2 !important;
 	border-left: 4px solid #ef4444 !important;

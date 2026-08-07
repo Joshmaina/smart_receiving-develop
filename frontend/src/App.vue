@@ -31,7 +31,16 @@
 				<button type="button" @click="resetForm">Discard &amp; start new</button>
 			</div>
 
+			<div class="shortcuts-legend-bar">
+				<span class="legend-title">⌨ Power Shortcuts:</span>
+				<span class="shortcut-item"><kbd>Alt + S</kbd> Search / Scan</span>
+				<span class="shortcut-item"><kbd>Alt + D</kbd> Save Draft</span>
+				<span class="shortcut-item"><kbd>Alt + Enter</kbd> Submit</span>
+				<span class="shortcut-item"><kbd>Esc</kbd> Close View</span>
+			</div>
+
 			<ItemGrid
+				ref="itemGridRef"
 				:items="cartItems"
 				:warehouse="header.warehouse"
 				:vat-templates="vatTemplates"
@@ -272,7 +281,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
 import { call } from "./api";
 import { buildCartRow } from "./cartRow";
 import { flt, money, generateRequestId } from "./format";
@@ -328,11 +337,42 @@ function freshKra() {
 const header = reactive(freshHeader());
 const cartItems = ref([]);
 const currentDraftName = ref(null);
+const itemGridRef = ref(null);
 const payment = reactive(freshPayment());
 const bill = reactive(freshBill());
 const kra = reactive(freshKra());
 const validatingKra = ref(false);
 const showQrScanner = ref(false);
+
+function onGlobalKeydown(e) {
+	if ((e.altKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+		e.preventDefault();
+		itemGridRef.value?.focusSearch();
+		return;
+	}
+	if (e.altKey && (e.key === "d" || e.key === "D")) {
+		e.preventDefault();
+		if (canSave.value && !saving.value) {
+			saveDraft();
+		}
+		return;
+	}
+	if (e.altKey && e.key === "Enter") {
+		e.preventDefault();
+		if (canSubmit.value && !submitting.value) {
+			confirmAndSubmit();
+		}
+		return;
+	}
+	if (e.key === "Escape") {
+		if (showSplitViewer.value) {
+			showSplitViewer.value = false;
+		}
+		if (showQrScanner.value) {
+			showQrScanner.value = false;
+		}
+	}
+}
 
 const showSplitViewer = ref(false);
 const docZoom = ref(1.0);
@@ -739,6 +779,7 @@ async function submitReceiving() {
 }
 
 onMounted(async () => {
+	window.addEventListener("keydown", onGlobalKeydown);
 	await loadDrafts();
 	vatTemplates.value = await call("smart_receiving.smart_receiving.api.receiving.list_item_tax_templates");
 	modesOfPayment.value = await call("frappe.client.get_list", {
@@ -755,6 +796,10 @@ onMounted(async () => {
 		limit_page_length: 0,
 		order_by: "name asc",
 	});
+});
+
+onUnmounted(() => {
+	window.removeEventListener("keydown", onGlobalKeydown);
 });
 </script>
 
@@ -1230,5 +1275,39 @@ onMounted(async () => {
 	background: #4338ca;
 	color: #ffffff;
 	border-color: #4338ca;
+}
+
+.shortcuts-legend-bar {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	padding: 8px 14px;
+	background: var(--gray-100, #f4f5f6);
+	border: 1px solid var(--dark-border-color, #e5e7eb);
+	border-radius: 6px;
+	margin-bottom: 16px;
+	font-size: 12px;
+	color: var(--text-muted, #6b7280);
+}
+.legend-title {
+	font-weight: 700;
+	color: var(--text-color, #1f2937);
+}
+.shortcut-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.shortcut-item kbd {
+	background: #ffffff;
+	border: 1px solid var(--dark-border-color, #d1d8dd);
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+	padding: 1px 6px;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--primary, #5e64ff);
 }
 </style>
