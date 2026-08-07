@@ -47,7 +47,8 @@ docker exec -u 0 $BACKEND sh -c "
   chmod -R 755 /home/frappe/frappe-bench/sites/assets
 "
 
-echo -e "\n5. Clearing Cache..."
+echo -e "\n5. Clearing Cache & Reloading Python Workers..."
+docker restart $BACKEND
 docker exec -w /home/frappe/frappe-bench/sites $BACKEND bench --site site1.localhost clear-cache
 
 echo -e "\n6. Copying Assets to Shared Nginx Web Volume..."

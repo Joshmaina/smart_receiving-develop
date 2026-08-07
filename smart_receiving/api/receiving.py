@@ -1147,7 +1147,7 @@ def get_kra_validation(purchase_invoice):
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_supplier_balance(supplier):
 	"""Get current Accounts Payable GL balance for a Supplier."""
 	if not supplier:
