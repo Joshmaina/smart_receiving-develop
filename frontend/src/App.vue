@@ -189,10 +189,55 @@
 			<p v-if="isEtimsNumber && kra.etims_scanned_data" class="muted">
 				Using the scanned QR text above - manual PIN/Branch/Signature fields are not needed.
 			</p>
-			<div v-if="kra.status" class="kra-status">
-				Status: <strong>{{ kra.status }}</strong>
-				<template v-if="kra.status === 'Fetched'"> - {{ kra.claimable ? "Claimable" : "Not claimable" }}</template>
-				<span v-if="kra.message" class="muted"> ({{ kra.message }})</span>
+			<div v-if="kra.status" class="kra-audit-card">
+				<div class="kra-card-header">
+					<div class="kra-card-title">
+						🛡️ KRA {{ kra.invoice_source || 'eTIMS' }} Compliance Audit
+					</div>
+					<div class="kra-card-badges">
+						<span :class="['kra-badge', kra.claimable ? 'badge-claimable' : 'badge-unclaimable']">
+							{{ kra.claimable ? '🟢 Claimable VAT' : '🔴 Unclaimable VAT' }}
+						</span>
+						<span :class="['kra-status-pill', kra.status === 'Fetched' ? 'status-fetched' : 'status-pending']">
+							{{ kra.status === 'Fetched' ? '✓ Verified' : kra.status }}
+						</span>
+					</div>
+				</div>
+
+				<div class="kra-card-grid">
+					<div v-if="kra.cu_invoice_number" class="kra-field-item">
+						<span class="kra-field-label">Control Unit Invoice No:</span>
+						<span class="kra-field-val"><code>{{ kra.cu_invoice_number }}</code></span>
+					</div>
+					<div v-if="kra.supplier_pin" class="kra-field-item">
+						<span class="kra-field-label">Supplier KRA PIN:</span>
+						<span class="kra-field-val"><code>{{ kra.supplier_pin }}</code></span>
+					</div>
+					<div v-if="kra.supplier_name" class="kra-field-item">
+						<span class="kra-field-label">Supplier Name:</span>
+						<span class="kra-field-val">{{ kra.supplier_name }}</span>
+					</div>
+					<div v-if="kra.buyer_pin" class="kra-field-item">
+						<span class="kra-field-label">Buyer PIN (BO):</span>
+						<span class="kra-field-val"><code>{{ kra.buyer_pin }}</code></span>
+					</div>
+					<div v-if="kra.total_amount" class="kra-field-item">
+						<span class="kra-field-label">Verified Total:</span>
+						<span class="kra-field-val">{{ money(kra.total_amount) }}</span>
+					</div>
+					<div v-if="kra.tax_amount" class="kra-field-item">
+						<span class="kra-field-label">VAT Amount:</span>
+						<span class="kra-field-val">{{ money(kra.tax_amount) }}</span>
+					</div>
+					<div v-if="kra.invoice_date" class="kra-field-item">
+						<span class="kra-field-label">Invoice Date:</span>
+						<span class="kra-field-val">{{ kra.invoice_date }}</span>
+					</div>
+				</div>
+
+				<div v-if="kra.message" class="kra-card-footer">
+					<span class="muted">Note: {{ kra.message }}</span>
+				</div>
 			</div>
 		</div>
 
@@ -331,6 +376,15 @@ function freshKra() {
 		etims_branch_id: "",
 		etims_receipt_signature: "",
 		etims_scanned_data: "",
+		invoice_source: "",
+		supplier_pin: "",
+		supplier_name: "",
+		buyer_pin: "",
+		buyer_name: "",
+		taxable_amount: 0,
+		tax_amount: 0,
+		total_amount: 0,
+		invoice_date: null,
 	};
 }
 
@@ -506,6 +560,15 @@ async function onValidateKra() {
 		kra.status = result.status;
 		kra.claimable = result.claimable;
 		kra.message = result.message || "";
+		kra.invoice_source = result.invoice_source || (isEtimsNumber.value ? "eTIMS" : "TIMS");
+		kra.supplier_pin = result.supplier_pin || "";
+		kra.supplier_name = result.supplier_name || "";
+		kra.buyer_pin = result.buyer_pin || "";
+		kra.buyer_name = result.buyer_name || "";
+		kra.taxable_amount = result.taxable_amount || 0;
+		kra.tax_amount = result.tax_amount || 0;
+		kra.total_amount = result.total_amount || 0;
+		kra.invoice_date = result.invoice_date || null;
 		kraLogName.value = result.name;
 	} catch (e) {
 		kra.status = "Failed";
@@ -657,6 +720,15 @@ async function loadDraft(name) {
 		kra.etims_branch_id = existingKra.etims_branch_id || "";
 		kra.etims_receipt_signature = existingKra.etims_receipt_signature || "";
 		kra.etims_scanned_data = existingKra.etims_scanned_data || "";
+		kra.invoice_source = existingKra.invoice_source || "";
+		kra.supplier_pin = existingKra.supplier_pin || "";
+		kra.supplier_name = existingKra.supplier_name || "";
+		kra.buyer_pin = existingKra.buyer_pin || "";
+		kra.buyer_name = existingKra.buyer_name || "";
+		kra.taxable_amount = existingKra.taxable_amount || 0;
+		kra.tax_amount = existingKra.tax_amount || 0;
+		kra.total_amount = existingKra.total_amount || 0;
+		kra.invoice_date = existingKra.invoice_date || null;
 		kraLogName.value = existingKra.name;
 	} else {
 		Object.assign(kra, freshKra());
@@ -1309,5 +1381,93 @@ onUnmounted(() => {
 	font-size: 11px;
 	font-weight: 700;
 	color: var(--primary, #5e64ff);
+}
+
+.kra-audit-card {
+	margin-top: 14px;
+	padding: 14px 16px;
+	border: 1px solid #c7d2fe;
+	background: #f5f3ff;
+	border-radius: 8px;
+}
+.kra-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #e0e7ff;
+}
+.kra-card-title {
+	font-weight: 700;
+	font-size: 13px;
+	color: #3730a3;
+}
+.kra-card-badges {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.kra-badge {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 3px 10px;
+	border-radius: 999px;
+	letter-spacing: 0.02em;
+}
+.badge-claimable {
+	background-color: #d1fae5 !important;
+	color: #065f46 !important;
+	border: 1px solid #a7f3d0 !important;
+}
+.badge-unclaimable {
+	background-color: #fee2e2 !important;
+	color: #991b1b !important;
+	border: 1px solid #fca5a5 !important;
+}
+.kra-status-pill {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 4px;
+}
+.status-fetched {
+	background-color: #e0e7ff !important;
+	color: #3730a3 !important;
+	border: 1px solid #c7d2fe !important;
+}
+.status-pending {
+	background-color: #fef3c7 !important;
+	color: #92400e !important;
+	border: 1px solid #fde68a !important;
+}
+.kra-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 10px;
+	font-size: 12px;
+}
+.kra-field-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.kra-field-label {
+	color: #6b7280;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+.kra-field-val {
+	font-weight: 600;
+	color: #1f2937;
+}
+.kra-card-footer {
+	margin-top: 10px;
+	font-size: 11px;
+	border-top: 1px dashed #e0e7ff;
+	padding-top: 6px;
 }
 </style>

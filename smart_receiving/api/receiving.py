@@ -1059,7 +1059,22 @@ def validate_kra_invoice(
 	if fetched.get("pending"):
 		message = f"{fetched.get('pending_reason') or 'Not available yet'} - saved as Pending, will retry nightly."
 
-	return {"name": log.name, "status": log.status, "claimable": log.claimable, "message": message}
+	return {
+		"name": log.name,
+		"status": log.status,
+		"claimable": log.claimable,
+		"message": message,
+		"invoice_source": log.invoice_source,
+		"cu_invoice_number": log.cu_invoice_number,
+		"supplier_pin": log.supplier_pin or log.etims_supplier_pin_input,
+		"supplier_name": log.supplier_name,
+		"buyer_pin": log.buyer_pin,
+		"buyer_name": log.buyer_name,
+		"taxable_amount": flt(log.taxable_amount),
+		"tax_amount": flt(log.tax_amount),
+		"total_amount": flt(log.total_amount),
+		"invoice_date": str(log.invoice_date) if log.invoice_date else None,
+	}
 
 
 @frappe.whitelist()
@@ -1088,11 +1103,15 @@ def test_kra_connectivity(cu_invoice_number="0170496290000823609"):
 		return {
 			"ok": False,
 			"reason": result.get("pending_reason"),
-			"raw_response_preview": (result.get("raw_response") or "")[:300],
+			"raw_response": result.get("raw_response"),
 		}
+
 	return {
 		"ok": True,
-		"parsed": {k: v for k, v in result.items() if k not in ("raw_response", "pending", "pending_reason")},
+		"supplier_name": result.get("supplier_name"),
+		"buyer_pin": result.get("buyer_pin"),
+		"total_amount": result.get("total_amount"),
+		"raw_response": result.get("raw_response"),
 	}
 
 
@@ -1117,4 +1136,12 @@ def get_kra_validation(purchase_invoice):
 		"etims_branch_id": log.etims_branch_id,
 		"etims_receipt_signature": log.etims_receipt_signature,
 		"etims_scanned_data": log.etims_scanned_data,
+		"supplier_pin": log.supplier_pin or log.etims_supplier_pin_input,
+		"supplier_name": log.supplier_name,
+		"buyer_pin": log.buyer_pin,
+		"buyer_name": log.buyer_name,
+		"taxable_amount": flt(log.taxable_amount),
+		"tax_amount": flt(log.tax_amount),
+		"total_amount": flt(log.total_amount),
+		"invoice_date": str(log.invoice_date) if log.invoice_date else None,
 	}
