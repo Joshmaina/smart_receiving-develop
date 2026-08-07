@@ -133,8 +133,8 @@
 			</div>
 
 		<div class="kra-block">
-			<div class="bill-block-title">KRA Validation</div>
-			<KraReceiptScanner @validated="onKraScannerValidated" />
+			<div class="bill-block-title">KRA Document Verification</div>
+			<KraDocumentScanner @validated="onKraDocumentValidated" />
 			<div class="bill-row">
 				<label for="kra-cu-invoice-number" class="field kra-cu-field">
 					<span class="label-text">CU Invoice Number</span>
@@ -351,19 +351,17 @@ import ReceivingHeader from "./components/ReceivingHeader.vue";
 import ItemGrid from "./components/ItemGrid.vue";
 import MoneyInput from "./components/MoneyInput.vue";
 import QrScanner from "./components/QrScanner.vue";
-import KraReceiptScanner from "./components/KraReceiptScanner.vue";
+import KraDocumentScanner from "./components/KraDocumentScanner.vue";
 
-function onKraScannerValidated(valData) {
+function onKraDocumentValidated(valData) {
 	if (valData.cuInvoiceNumber) {
 		kra.cu_invoice_number = valData.cuInvoiceNumber;
-	}
-	if (valData.cuSerialNo) {
-		kra.cu_serial_no = valData.cuSerialNo;
 	}
 	if (valData.isValid) {
 		kra.status = "Fetched";
 		kra.claimable = true;
-		kra.message = valData.message || "Verified Fiscal Receipt";
+		kra.invoice_source = valData.docType || (kra.cu_invoice_number.includes("/") ? "eTIMS" : "TIMS");
+		kra.message = valData.message || "Verified KRA Document";
 	}
 }
 

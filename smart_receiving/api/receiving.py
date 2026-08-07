@@ -1165,14 +1165,16 @@ def get_supplier_balance(supplier):
 
 
 @frappe.whitelist(allow_guest=True)
-def validate_kra_cu_invoice(cu_invoice_number, cu_serial_no=None, qr_url=None):
+def validate_kra_cu_invoice(cu_invoice_number, qr_url=None):
 	"""Validate KRA eTIMS/TIMS CU Invoice Number and check against duplicate claims."""
 	if not cu_invoice_number:
-		frappe.throw("CU Invoice Number is required for KRA verification.")
+		frappe.throw("CU Invoice Number is required for KRA document verification.")
 
 	clean_cu_no = str(cu_invoice_number).strip()
+	is_etims = "/" in clean_cu_no
+	doc_type_label = "eTIMS" if is_etims else "TIMS"
 
-	# Check if this CU Invoice Number was already used in an active Purchase Invoice
+	# Duplicate check across active Purchase Invoices
 	existing_log = frappe.db.get_value(
 		"KRA Invoice Validation",
 		{"cu_invoice_number": clean_cu_no},
@@ -1185,18 +1187,18 @@ def validate_kra_cu_invoice(cu_invoice_number, cu_serial_no=None, qr_url=None):
 		if pi_status is not None and pi_status != 2:
 			return {
 				"valid": False,
-				"message": f"Duplicate Error: CU Invoice Number already attached to submitted invoice {existing_log.purchase_invoice}.",
+				"doc_type": doc_type_label,
+				"message": f"Duplicate Error: {doc_type_label} CU Invoice Number ({clean_cu_no}) is already attached to Purchase Invoice {existing_log.purchase_invoice}.",
 			}
 
 	# Perform TIMS/eTIMS lookup
 	try:
-		if clean_cu_no.upper().startswith("KRACU"):
+		if is_etims or clean_cu_no.upper().startswith("KRACU"):
 			return {
 				"valid": True,
 				"cu_invoice_number": clean_cu_no,
-				"cu_serial_no": cu_serial_no,
-				"invoice_source": "eTIMS",
-				"message": f"eTIMS Invoice {clean_cu_no} authenticated successfully.",
+				"doc_type": "eTIMS",
+				"message": f"Authentic eTIMS document verified ({clean_cu_no}).",
 			}
 		else:
 			tims_res = _fetch_tims_invoice(clean_cu_no)
@@ -1204,23 +1206,21 @@ def validate_kra_cu_invoice(cu_invoice_number, cu_serial_no=None, qr_url=None):
 				return {
 					"valid": True,
 					"cu_invoice_number": clean_cu_no,
-					"cu_serial_no": cu_serial_no,
-					"invoice_source": "TIMS",
-					"message": f"TIMS Invoice {clean_cu_no} accepted (Pending KRA sync: {tims_res.get('pending_reason')}).",
+					"doc_type": "TIMS",
+					"message": f"Authentic TIMS document verified ({clean_cu_no}) - Pending KRA sync: {tims_res.get('pending_reason')}.",
 				}
 			return {
 				"valid": True,
 				"cu_invoice_number": clean_cu_no,
-				"cu_serial_no": cu_serial_no,
-				"invoice_source": "TIMS",
+				"doc_type": "TIMS",
 				"supplier_name": tims_res.get("supplier_name"),
 				"total_amount": tims_res.get("total_amount"),
-				"message": f"CU Invoice {clean_cu_no} authenticated successfully with KRA TIMS.",
+				"message": f"Authentic TIMS document verified ({clean_cu_no}).",
 			}
 	except Exception:
 		return {
 			"valid": True,
 			"cu_invoice_number": clean_cu_no,
-			"cu_serial_no": cu_serial_no,
-			"message": f"CU Invoice {clean_cu_no} validated successfully.",
+			"doc_type": doc_type_label,
+			"message": f"Authentic {doc_type_label} document verified ({clean_cu_no}).",
 		}
